@@ -1,6 +1,16 @@
 #include "Window.h"
 
-Window::Window(int32_t width, int32_t height)
+WindowContext::WindowContext()
+{
+	glfwInit();
+}
+
+WindowContext::~WindowContext()
+{
+	glfwTerminate();
+}
+
+Window::Window(int32_t width, int32_t height, WindowContext const&)
 	:width(width), height(height)
 {
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -12,10 +22,7 @@ Window::Window(int32_t width, int32_t height)
 
 Window::~Window()
 {
-	if (window)
-	{
-		glfwDestroyWindow(window);
-	}
+	glfwDestroyWindow(window);
 }
 
 Window::operator GLFWwindow* () const

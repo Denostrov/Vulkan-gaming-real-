@@ -11,6 +11,8 @@ public:
 
 	bool windowCloseStatus();
 private:
-	std::unique_ptr<Window> renderWindow;
+	WindowContext windowContext;
+	Window renderWindow;
+	vk::UniqueInstance instance;
 };
 
