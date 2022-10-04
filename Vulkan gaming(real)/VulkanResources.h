@@ -1,6 +1,8 @@
 #pragma once
 
 #include "print.h"
+#include "helpers.h"
+#include "constants.h"
 #include "Window.h"
 
 class VulkanResources
