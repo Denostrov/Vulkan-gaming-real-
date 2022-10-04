@@ -50,5 +50,8 @@
     <ClInclude Include="helpers.h">
       <Filter>Header Files\helpers</Filter>
     </ClInclude>
+    <ClInclude Include="logging.h">
+      <Filter>Header Files\helpers</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

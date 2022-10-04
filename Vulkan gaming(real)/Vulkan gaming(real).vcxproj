@@ -156,6 +156,7 @@
     <ClInclude Include="constants.h" />
     <ClInclude Include="Game.h" />
     <ClInclude Include="helpers.h" />
+    <ClInclude Include="logging.h" />
     <ClInclude Include="print.h" />
     <ClInclude Include="VulkanResources.h" />
     <ClInclude Include="Window.h" />
