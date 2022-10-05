@@ -2,6 +2,7 @@
 
 using namespace std::literals;
 
+//get available resources
 template<class Resource>
 auto enumerateFunc() {}
 template<>
@@ -9,6 +10,7 @@ auto enumerateFunc<vk::ExtensionProperties>() { return vk::enumerateInstanceExte
 template<>
 auto enumerateFunc<vk::LayerProperties>() { return vk::enumerateInstanceLayerProperties(); }
 
+//get required resources
 template<class Resource>
 auto enumerateRequiredFunc() {}
 template<>
@@ -29,19 +31,21 @@ auto enumerateRequiredFunc<vk::LayerProperties>()
 	return std::vector<char const*>(VALIDATION_LAYERS.begin(), VALIDATION_LAYERS.end());
 }
 
+//get name of resource from struct
 template<class Resource>
 auto getResourceNameFunc(Resource const& val) {}
 template<>
 auto getResourceNameFunc(vk::ExtensionProperties const& val)
 {
-	return val.extensionName;
+	return val.extensionName.data();
 }
 template<>
 auto getResourceNameFunc(vk::LayerProperties const& val)
 {
-	return val.layerName;
+	return val.layerName.data();
 }
 
+//check each required resource for availability and print it
 template<class Resource>
 auto checkAndPrintRequired(std::vector<Resource> const& resources, std::vector<char const*> const& requiredResourceNames)
 {
@@ -54,6 +58,7 @@ auto checkAndPrintRequired(std::vector<Resource> const& resources, std::vector<c
 	}
 }
 
+//get names of required resources                               
 template<class Resource>
 auto getRequiredResources()
 {
@@ -101,6 +106,14 @@ VulkanResources::VulkanResources()
 	}
 
 	auto physicalDevices = instance->enumeratePhysicalDevices();
+	
+	std::cout << getTotalString(physicalDevices, "available"s);
+	for (auto const& physicalDevice : physicalDevices)
+	{
+		auto physicalDeviceProperties = physicalDevice.getProperties();
+		auto physicalDeviceFeatures = physicalDevice.getFeatures();
+		std::cout << getFormatString(physicalDeviceProperties) << ",\t" << getFormatString(physicalDeviceFeatures);
+	}
 }
 
 VulkanResources::~VulkanResources()
