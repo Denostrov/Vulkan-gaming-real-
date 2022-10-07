@@ -106,13 +106,41 @@ VulkanResources::VulkanResources()
 	}
 
 	auto physicalDevices = instance->enumeratePhysicalDevices();
-	
+	assert(!physicalDevices.empty());
+
+	auto rateDeviceScore = [](vk::PhysicalDeviceProperties const& physicalDeviceProperties)
+	{
+		uint64_t score = 1;
+		uint64_t multiplier = 1;
+
+		if (physicalDeviceProperties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
+		{
+			multiplier++;
+		}
+		score += physicalDeviceProperties.limits.maxImageDimension2D;
+		score += physicalDeviceProperties.limits.maxBoundDescriptorSets;
+		score += physicalDeviceProperties.limits.maxPushConstantsSize;
+		score += physicalDeviceProperties.limits.maxDescriptorSetUniformBuffers;
+		score += physicalDeviceProperties.limits.maxFramebufferHeight;
+
+		return score;
+	};
+
+	uint64_t maxPhysicalDeviceScore = 0;
+	auto currentBestPhysicalDevice = physicalDevices[0];
 	std::cout << getTotalString(physicalDevices, "available"s);
 	for (auto const& physicalDevice : physicalDevices)
 	{
 		auto physicalDeviceProperties = physicalDevice.getProperties();
 		auto physicalDeviceFeatures = physicalDevice.getFeatures();
-		std::cout << getFormatString(physicalDeviceProperties) << ",\t" << getFormatString(physicalDeviceFeatures);
+		std::cout << getFormatString(physicalDeviceProperties) << ",\t"s << getFormatString(physicalDeviceFeatures) << "\n"s;
+		auto currentPhysicalDeviceScore = rateDeviceScore(physicalDeviceProperties);
+		std::cout << getLabelValuePairsString(LabelValuePair{"Device suitability score"s, currentPhysicalDeviceScore}) << "\n"s;
+		if (currentPhysicalDeviceScore > maxPhysicalDeviceScore)
+		{
+			currentBestPhysicalDevice = physicalDevice;
+			maxPhysicalDeviceScore = std::max(maxPhysicalDeviceScore, currentPhysicalDeviceScore);
+		}
 	}
 }
 
