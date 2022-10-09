@@ -1,10 +1,14 @@
 #pragma once
 
+#include <unordered_set>
+
 #include "print.h"
 #include "helpers.h"
 #include "constants.h"
 #include "Window.h"
 #include "logging.h"
+
+
 
 class VulkanResources
 {
@@ -17,8 +21,20 @@ private:
 	WindowContext windowContext;
 	Window renderWindow;
 	vk::UniqueInstance instance;
-	vk::UniqueDebugUtilsMessengerEXT debugMessenger;
+	vk::UniqueDebugUtilsMessengerEXT debugUtilsMessenger;
+	vk::UniqueSurfaceKHR surface;
+	vk::PhysicalDevice physicalDevice;
+	QueueFamilyIndices queueFamilyIndices;
 	vk::UniqueDevice device;
-	
+	vk::Queue graphicsQueue;
+	vk::Queue presentationQueue;
+
+	std::unique_ptr<vk::DebugUtilsMessengerCreateInfoEXT> getDebugUtilsMessengerCreateInfo();
+	std::vector<char const*> getValidationLayers();
+	std::vector<char const*> getInstanceExtensions();
+	vk::UniqueInstance createInstance(std::vector<char const*> const& validationLayers, std::vector<char const*> const& instanceExtensions,
+									  vk::DebugUtilsMessengerCreateInfoEXT* debugUtilsMessengerCreateInfo);
+	vk::UniqueDebugUtilsMessengerEXT createDebugUtilsMessenger(vk::DebugUtilsMessengerCreateInfoEXT const& debugUtilsMessengerCreateInfo);
+	vk::UniqueSurfaceKHR createSurface();
 };
 

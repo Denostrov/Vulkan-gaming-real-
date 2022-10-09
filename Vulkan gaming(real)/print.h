@@ -6,6 +6,7 @@
 #include <string_view>
 
 #include "constants.h"
+#include "helpers.h"
 
 using namespace std::literals;
 
@@ -69,6 +70,39 @@ inline std::string toString(vk::SampleCountFlags flags)
 inline std::string toString(bool val)
 {
 	return val ? "True"s : "False"s;
+}
+inline std::string toString(QueueFamilyIndices const& val)
+{
+	return std::vformat("{{Graphics: {}, Presentation: {}}}"sv, std::make_format_args(val.graphicsFamily, val.presentationFamily));
+}
+template<class T>
+inline std::string toString() {}
+template<>
+inline std::string toString<vk::Instance>()
+{
+	return "Instance"s;
+}
+template<>
+inline std::string toString<vk::PhysicalDevice>()
+{
+	return "Physical device"s;
+}
+template<>
+inline std::string toString<vk::LayerProperties>()
+{
+	return "Validation layer"s;
+}
+template<class T, class V>
+inline std::string toString() {}
+template<>
+inline std::string toString<vk::Instance, vk::ExtensionProperties>()
+{
+	return "Instance extension"s;
+}
+template<>
+inline std::string toString<vk::PhysicalDevice, vk::ExtensionProperties>()
+{
+	return "Physical device extension"s;
 }
 
 //prints out according to format
@@ -393,17 +427,25 @@ inline auto getFormatString(vk::PhysicalDeviceFeatures const& val)
 									LabelValuePair{"Variable multisample rate"s, bool(val.variableMultisampleRate)},
 									LabelValuePair{"Inherited queries"s, bool(val.inheritedQueries)});
 }
+template<class T>
+inline auto getFormatString(std::vector<T> const& vals)
+{
+	return toString<T>() + (vals.size() != 1 ? "s"s : ""s);
+}
+template<class T>
 inline auto getFormatString(std::vector<vk::ExtensionProperties> const& vals)
 {
-	return "Instance extension"s + (vals.size() != 1 ? "s"s : ""s);
+	return toString<T>() + " extension"s + (vals.size() != 1 ? "s"s : ""s);
 }
-inline auto getFormatString(std::vector<vk::LayerProperties> const& vals)
+template <class T>
+inline auto getFormatString(std::vector<char const*> const& vals)
 {
-	return "Layer"s + (vals.size() != 1 ? "s"s : ""s);
+	return toString<T>() + (vals.size() != 1 ? "s"s : ""s);
 }
-inline auto getFormatString(std::vector<vk::PhysicalDevice> const& vals)
+template<class T, class U>
+inline auto getFormatString(std::vector<char const*> const& vals)
 {
-	return "Physical device"s + (vals.size() != 1 ? "s"s : ""s);
+	return toString<T, U>() + (vals.size() != 1 ? "s"s : ""s);
 }
 
 //get string for total vector element count
@@ -412,7 +454,8 @@ inline auto getTotalString(std::vector<T> const& vals, std::string const& title 
 {
 	return std::vformat("{} "s + getFormatString(vals) + " "s + title + ":\n"s, std::make_format_args(vals.size()));
 }
-inline auto getTotalString(std::vector<char const*> const& vals, std::string const& title = {}, std::string const& resourceName = {})
+template<class T>
+inline auto getTotalString(std::vector<T> const& vals, std::string const& title, std::string const& resourceName)
 {
 	return std::vformat("{} "s + resourceName + " "s + title + ":\n"s, std::make_format_args(vals.size()));
 }
