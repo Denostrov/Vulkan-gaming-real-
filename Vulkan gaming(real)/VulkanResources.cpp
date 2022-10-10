@@ -57,6 +57,175 @@ auto checkAndPrintRequired(std::vector<Resource> const& resources, std::vector<c
 	return true;
 }
 
+//get create info for debug utils messenger with all messages
+auto getDebugUtilsMessengerCreateInfo()
+{
+	using enum vk::DebugUtilsMessageTypeFlagBitsEXT;
+	using enum vk::DebugUtilsMessageSeverityFlagBitsEXT;
+	if (ENABLE_VALIDATION_LAYERS)
+	{
+		std::unique_ptr<vk::DebugUtilsMessengerCreateInfoEXT> debugUtilsMessengerCreateInfo{new vk::DebugUtilsMessengerCreateInfoEXT({},
+																																	 eError | eWarning | eInfo | eVerbose,
+																																	 eGeneral | eValidation | ePerformance, debugCallback, nullptr)};
+		return debugUtilsMessengerCreateInfo;
+	}
+	else
+	{
+		return std::unique_ptr<vk::DebugUtilsMessengerCreateInfoEXT>(nullptr);
+	}
+}
+
+//get required validation layers that are supported
+auto getValidationLayers()
+{
+	if (ENABLE_VALIDATION_LAYERS)
+	{
+		auto availableLayers = vk::enumerateInstanceLayerProperties();
+		std::cout << getTotalString(availableLayers, "available"s) << availableLayers;
+
+		auto requiredLayers = enumerateRequiredFunc<vk::LayerProperties>();
+		std::cout << getTotalString(requiredLayers, "required"s, getFormatString<vk::LayerProperties>(requiredLayers));
+		assert(checkAndPrintRequired(availableLayers, requiredLayers));
+
+		return requiredLayers;
+	}
+	else
+	{
+		return std::vector<char const*>();
+	}
+}
+
+auto getInstanceExtensions()
+{
+	auto availableInstanceExtensions = vk::enumerateInstanceExtensionProperties();
+	std::cout << getTotalString(availableInstanceExtensions, "available"s, getFormatString<vk::Instance>(availableInstanceExtensions)) << availableInstanceExtensions;
+
+	auto requiredInstanceExtensions = enumerateRequiredFunc<vk::Instance, vk::ExtensionProperties>();
+	std::cout << getTotalString(requiredInstanceExtensions, "required"s, getFormatString<vk::Instance, vk::ExtensionProperties>(requiredInstanceExtensions));
+	checkAndPrintRequired(availableInstanceExtensions, requiredInstanceExtensions);
+
+	return requiredInstanceExtensions;
+}
+
+auto getSwapChainSupportDetails(vk::PhysicalDevice const& physicalDevice, vk::SurfaceKHR const& surface)
+{
+	SwapChainSupportDetails swapChainSupportDetails{};
+	swapChainSupportDetails.capabilities = physicalDevice.getSurfaceCapabilitiesKHR(surface);
+	std::cout << toString<vk::SurfaceCapabilitiesKHR>() + ":\n"s << getFormatString(swapChainSupportDetails.capabilities) << "\n"s;
+
+	swapChainSupportDetails.formats = physicalDevice.getSurfaceFormatsKHR(surface);
+	std::cout << getTotalString(swapChainSupportDetails.formats, "supported"s, getFormatString(swapChainSupportDetails.formats)) <<
+		swapChainSupportDetails.formats;
+
+	swapChainSupportDetails.presentModes = physicalDevice.getSurfacePresentModesKHR(surface);
+	std::cout << getTotalString(swapChainSupportDetails.presentModes, "supported"s, getFormatString(swapChainSupportDetails.presentModes)) <<
+		swapChainSupportDetails.presentModes;
+
+	return swapChainSupportDetails;
+}
+
+auto rateDeviceScore(vk::PhysicalDevice const& physicalDevice, std::vector<char const*> const& requiredPhysicalDeviceExtensions, vk::SurfaceKHR const& surface)
+{
+	auto physicalDeviceProperties = physicalDevice.getProperties();
+
+	uint64_t score = 1;
+	uint64_t multiplier = 1;
+
+	if (physicalDeviceProperties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
+	{
+		multiplier++;
+	}
+	score += physicalDeviceProperties.limits.maxImageDimension2D;
+	score += physicalDeviceProperties.limits.maxBoundDescriptorSets;
+	score += physicalDeviceProperties.limits.maxPushConstantsSize;
+	score += physicalDeviceProperties.limits.maxDescriptorSetUniformBuffers;
+	score += physicalDeviceProperties.limits.maxFramebufferHeight;
+	score += physicalDeviceProperties.limits.maxSamplerAllocationCount;
+	score += physicalDeviceProperties.limits.maxImageArrayLayers;
+
+	if (score > std::numeric_limits<uint32_t>::max())
+	{
+		score = 1;
+	}
+
+	uint64_t requirementMultiplier = 0;
+	QueueFamilyIndices queueFamilyIndices{};
+	auto queueFamilies = physicalDevice.getQueueFamilyProperties();
+	bool foundGraphicsQueueFamily = false;
+	bool foundPresentationQueueFamily = false;
+	for (uint64_t i = 0; i < queueFamilies.size(); i++)
+	{
+		if (!foundGraphicsQueueFamily && queueFamilies[i].queueFlags & vk::QueueFlagBits::eGraphics)
+		{
+			queueFamilyIndices.graphicsFamily = uint32_t(i);
+			foundGraphicsQueueFamily = true;
+		}
+		if (!foundPresentationQueueFamily && physicalDevice.getSurfaceSupportKHR(uint32_t(i), surface))
+		{
+			queueFamilyIndices.presentationFamily = uint32_t(i);
+			foundPresentationQueueFamily = true;
+		}
+		if (foundGraphicsQueueFamily && foundPresentationQueueFamily)
+		{
+			requirementMultiplier = 1;
+			break;
+		}
+	}
+	score *= requirementMultiplier;
+
+	requirementMultiplier = 1;
+	auto availablePhysicalDeviceExtensions = physicalDevice.enumerateDeviceExtensionProperties();
+	std::cout << getTotalString(availablePhysicalDeviceExtensions, "available"s, getFormatString<vk::PhysicalDevice>(availablePhysicalDeviceExtensions)) <<
+		availablePhysicalDeviceExtensions;
+
+	std::cout << getTotalString(requiredPhysicalDeviceExtensions, "required"s, getFormatString<vk::PhysicalDevice, vk::ExtensionProperties>(requiredPhysicalDeviceExtensions));
+	if (!checkAndPrintRequired(availablePhysicalDeviceExtensions, requiredPhysicalDeviceExtensions))
+	{
+		requirementMultiplier = 0;
+	}
+	else
+	{
+		auto swapChainSupportDetails = getSwapChainSupportDetails(physicalDevice, surface);
+		//if (swapChainSupportDetails.formats.empty() || swapChainSupportDetails.presentModes.empty()) requirementMultiplier = 0;
+	}
+
+	score *= requirementMultiplier;
+
+	return std::pair<uint64_t, QueueFamilyIndices>(score * multiplier, queueFamilyIndices);
+}
+
+auto choosePhysicalDevice(vk::Instance const& instance, std::vector<char const*> const& requiredPhysicalDeviceExtensions, vk::SurfaceKHR const& surface)
+{
+	auto physicalDevices = instance.enumeratePhysicalDevices();
+	assert(!physicalDevices.empty() && "No devices with vulkan support found");
+
+	uint64_t maxPhysicalDeviceScore = 0;
+	vk::PhysicalDevice bestPhysicalDevice{};
+	QueueFamilyIndices bestPhysicalDeviceQueueIndices{};
+	std::cout << getTotalString(physicalDevices, "available"s);
+	for (auto const& currentPhysicalDevice : physicalDevices)
+	{
+		auto physicalDeviceProperties = currentPhysicalDevice.getProperties();
+		auto physicalDeviceFeatures = currentPhysicalDevice.getFeatures();
+		std::cout << getFormatString(physicalDeviceProperties) << ",\t"s << getFormatString(physicalDeviceFeatures) << "\n"s;
+		uint64_t currentPhysicalDeviceScore{};
+		QueueFamilyIndices currentPhysicalDeviceQueueIndices{};
+		std::tie(currentPhysicalDeviceScore, currentPhysicalDeviceQueueIndices) = rateDeviceScore(currentPhysicalDevice, requiredPhysicalDeviceExtensions, surface);
+		std::cout << getLabelValuePairsString(LabelValuePair{"Device suitability score"s, currentPhysicalDeviceScore},
+											  LabelValuePair{"Suitable queue family indices"s, currentPhysicalDeviceQueueIndices}) << "\n"s;
+		if (currentPhysicalDeviceScore > maxPhysicalDeviceScore)
+		{
+			bestPhysicalDevice = currentPhysicalDevice;
+			bestPhysicalDeviceQueueIndices = currentPhysicalDeviceQueueIndices;
+			maxPhysicalDeviceScore = std::max(maxPhysicalDeviceScore, currentPhysicalDeviceScore);
+		}
+	}
+	assert(maxPhysicalDeviceScore > 0 && "No suitable physical devices found");
+	formatPrint(std::cout, "Picked {} as best physical device with {} score and {} queue family indices\n"sv,
+				bestPhysicalDevice.getProperties().deviceName.data(), maxPhysicalDeviceScore, toString(bestPhysicalDeviceQueueIndices));
+	return std::pair<vk::PhysicalDevice, QueueFamilyIndices>(bestPhysicalDevice, bestPhysicalDeviceQueueIndices);
+}
+
 VulkanResources::VulkanResources()
 	:windowContext(),
 	renderWindow(800, 600, windowContext)
@@ -71,114 +240,6 @@ VulkanResources::VulkanResources()
 	auto debugUtilsMessengerCreateInfo = getDebugUtilsMessengerCreateInfo();
 
 	auto requiredPhysicalDeviceExtensions = enumerateRequiredFunc<vk::PhysicalDevice, vk::ExtensionProperties>();
-	auto rateDeviceScore = [&](vk::PhysicalDevice const& physicalDevice)
-	{
-		auto physicalDeviceProperties = physicalDevice.getProperties();
-
-		uint64_t score = 1;
-		uint64_t multiplier = 1;
-
-		if (physicalDeviceProperties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
-		{
-			multiplier++;
-		}
-		score += physicalDeviceProperties.limits.maxImageDimension2D;
-		score += physicalDeviceProperties.limits.maxBoundDescriptorSets;
-		score += physicalDeviceProperties.limits.maxPushConstantsSize;
-		score += physicalDeviceProperties.limits.maxDescriptorSetUniformBuffers;
-		score += physicalDeviceProperties.limits.maxFramebufferHeight;
-		score += physicalDeviceProperties.limits.maxSamplerAllocationCount;
-		score += physicalDeviceProperties.limits.maxImageArrayLayers;
-
-		if (score > std::numeric_limits<uint32_t>::max())
-		{
-			score = 1;
-		}
-
-		uint64_t requirementMultiplier = 0;
-		QueueFamilyIndices queueFamilyIndices{};
-		auto queueFamilies = physicalDevice.getQueueFamilyProperties();
-		bool foundGraphicsQueueFamily = false;
-		bool foundPresentationQueueFamily = false;
-		for (uint64_t i = 0; i < queueFamilies.size(); i++)
-		{
-			if (!foundGraphicsQueueFamily && queueFamilies[i].queueFlags & vk::QueueFlagBits::eGraphics)
-			{
-				queueFamilyIndices.graphicsFamily = uint32_t(i);
-				foundGraphicsQueueFamily = true;
-			}
-			if (!foundPresentationQueueFamily && physicalDevice.getSurfaceSupportKHR(uint32_t(i), surface.get()))
-			{
-				queueFamilyIndices.presentationFamily = uint32_t(i);
-				foundPresentationQueueFamily = true;
-			}
-			if (foundGraphicsQueueFamily && foundPresentationQueueFamily)
-			{
-				requirementMultiplier = 1;
-				break;
-			}
-		}
-		score *= requirementMultiplier;
-
-		requirementMultiplier = 1;
-		auto availablePhysicalDeviceExtensions = physicalDevice.enumerateDeviceExtensionProperties();
-		std::cout << getTotalString(availablePhysicalDeviceExtensions, "available"s, getFormatString<vk::PhysicalDevice>(availablePhysicalDeviceExtensions)) <<
-			availablePhysicalDeviceExtensions;
-
-		std::cout << getTotalString(requiredPhysicalDeviceExtensions, "required"s, getFormatString<vk::PhysicalDevice, vk::ExtensionProperties>(requiredPhysicalDeviceExtensions));
-		if (!checkAndPrintRequired(availablePhysicalDeviceExtensions, requiredPhysicalDeviceExtensions))
-		{
-			requirementMultiplier = 0;
-		}
-
-		score *= requirementMultiplier;
-
-		return std::pair<uint64_t, QueueFamilyIndices>(score * multiplier, queueFamilyIndices);
-	};
-	auto choosePhysicalDevice = [&]()
-	{
-		auto physicalDevices = instance->enumeratePhysicalDevices();
-		assert(!physicalDevices.empty() && "No devices with vulkan support found");
-
-		uint64_t maxPhysicalDeviceScore = 0;
-		vk::PhysicalDevice bestPhysicalDevice{};
-		QueueFamilyIndices bestPhysicalDeviceQueueIndices{};
-		std::cout << getTotalString(physicalDevices, "available"s);
-		for (auto const& currentPhysicalDevice : physicalDevices)
-		{
-			auto physicalDeviceProperties = currentPhysicalDevice.getProperties();
-			auto physicalDeviceFeatures = currentPhysicalDevice.getFeatures();
-			std::cout << getFormatString(physicalDeviceProperties) << ",\t"s << getFormatString(physicalDeviceFeatures) << "\n"s;
-			uint64_t currentPhysicalDeviceScore{};
-			QueueFamilyIndices currentPhysicalDeviceQueueIndices{};
-			std::tie(currentPhysicalDeviceScore, currentPhysicalDeviceQueueIndices) = rateDeviceScore(currentPhysicalDevice);
-			std::cout << getLabelValuePairsString(LabelValuePair{"Device suitability score"s, currentPhysicalDeviceScore},
-												  LabelValuePair{"Suitable queue family indices"s, currentPhysicalDeviceQueueIndices}) << "\n"s;
-			if (currentPhysicalDeviceScore > maxPhysicalDeviceScore)
-			{
-				bestPhysicalDevice = currentPhysicalDevice;
-				bestPhysicalDeviceQueueIndices = currentPhysicalDeviceQueueIndices;
-				maxPhysicalDeviceScore = std::max(maxPhysicalDeviceScore, currentPhysicalDeviceScore);
-			}
-		}
-		assert(maxPhysicalDeviceScore > 0 && "No suitable physical devices found");
-		formatPrint(std::cout, "Picked {} as best physical device with {} score and {} queue family indices\n"sv,
-					bestPhysicalDevice.getProperties().deviceName.data(), maxPhysicalDeviceScore, toString(bestPhysicalDeviceQueueIndices));
-		return std::pair<vk::PhysicalDevice, QueueFamilyIndices>(bestPhysicalDevice, bestPhysicalDeviceQueueIndices);
-	};
-	auto createLogicalDevice = [&]()
-	{
-		std::vector<float> queuePriorities = {1.0f};
-		std::unordered_set<uint32_t> uniqueQueueFamilyIndices = {queueFamilyIndices.graphicsFamily, queueFamilyIndices.presentationFamily};
-		std::vector<vk::DeviceQueueCreateInfo> deviceQueueCreateInfos{};
-		for (auto index : uniqueQueueFamilyIndices)
-		{
-			deviceQueueCreateInfos.push_back({{}, index, queuePriorities});
-		}
-		vk::PhysicalDeviceFeatures physicalDeviceFeatures{};
-		vk::DeviceCreateInfo deviceCreateInfo({}, deviceQueueCreateInfos, validationLayers, requiredPhysicalDeviceExtensions, &physicalDeviceFeatures);
-		return physicalDevice.createDeviceUnique(deviceCreateInfo);
-	};
 
 	instance = createInstance(validationLayers, instanceExtensions, debugUtilsMessengerCreateInfo.get());
 	assert(instance && "couldn't create instance");
@@ -196,9 +257,9 @@ VulkanResources::VulkanResources()
 	assert(surface && "couldn't create surface");
 	formatPrint(std::cout, "Created a window surface\n"sv);
 
-	std::tie(physicalDevice, queueFamilyIndices) = choosePhysicalDevice();
+	std::tie(physicalDevice, queueFamilyIndices) = choosePhysicalDevice(instance.get(), requiredPhysicalDeviceExtensions, surface.get());
 
-	device = createLogicalDevice();
+	device = createDevice(validationLayers, requiredPhysicalDeviceExtensions);
 	assert(device && "couldn't create logical device");
 	VULKAN_HPP_DEFAULT_DISPATCHER.init(device.get());
 	formatPrint(std::cout, "Created logical device\n"sv);
@@ -221,56 +282,6 @@ bool VulkanResources::windowCloseStatus()
 	return glfwWindowShouldClose(renderWindow);
 }
 
-//get create info for debug utils messenger with all messages
-std::unique_ptr<vk::DebugUtilsMessengerCreateInfoEXT> VulkanResources::getDebugUtilsMessengerCreateInfo()
-{
-	using enum vk::DebugUtilsMessageTypeFlagBitsEXT;
-	using enum vk::DebugUtilsMessageSeverityFlagBitsEXT;
-	if (ENABLE_VALIDATION_LAYERS)
-	{
-		std::unique_ptr<vk::DebugUtilsMessengerCreateInfoEXT> debugUtilsMessengerCreateInfo{new vk::DebugUtilsMessengerCreateInfoEXT({},
-																																	 eError | eWarning | eInfo | eVerbose,
-																																	 eGeneral | eValidation | ePerformance, debugCallback, nullptr)};
-		return debugUtilsMessengerCreateInfo;
-	}
-	else
-	{
-		return nullptr;
-	}
-}
-
-//get required validation layers that are supported
-std::vector<char const*> VulkanResources::getValidationLayers()
-{
-	if (ENABLE_VALIDATION_LAYERS)
-	{
-		auto availableLayers = vk::enumerateInstanceLayerProperties();
-		std::cout << getTotalString(availableLayers, "available"s) << availableLayers;
-
-		auto requiredLayers = enumerateRequiredFunc<vk::LayerProperties>();
-		std::cout << getTotalString(requiredLayers, "required"s, getFormatString<vk::LayerProperties>(requiredLayers));
-		assert(checkAndPrintRequired(availableLayers, requiredLayers));
-
-		return requiredLayers;
-	}
-	else
-	{
-		return std::vector<char const*>();
-	}
-}
-
-std::vector<char const*> VulkanResources::getInstanceExtensions()
-{
-	auto availableInstanceExtensions = vk::enumerateInstanceExtensionProperties();
-	std::cout << getTotalString(availableInstanceExtensions, "available"s, getFormatString<vk::Instance>(availableInstanceExtensions)) << availableInstanceExtensions;
-
-	auto requiredInstanceExtensions = enumerateRequiredFunc<vk::Instance, vk::ExtensionProperties>();
-	std::cout << getTotalString(requiredInstanceExtensions, "required"s, getFormatString<vk::Instance, vk::ExtensionProperties>(requiredInstanceExtensions));
-	checkAndPrintRequired(availableInstanceExtensions, requiredInstanceExtensions);
-
-	return requiredInstanceExtensions;
-}
-
 vk::UniqueInstance VulkanResources::createInstance(std::vector<char const*> const& validationLayers, std::vector<char const*> const& instanceExtensions,
 												   vk::DebugUtilsMessengerCreateInfoEXT* debugUtilsMessengerCreateInfo)
 {
@@ -290,4 +301,18 @@ vk::UniqueSurfaceKHR VulkanResources::createSurface()
 	VkSurfaceKHR windowSurface;
 	glfwCreateWindowSurface(instance.get(), renderWindow, nullptr, &windowSurface);
 	return vk::UniqueSurfaceKHR(vk::SurfaceKHR(windowSurface), instance.get());
+}
+
+vk::UniqueDevice VulkanResources::createDevice(std::vector<char const*> const& validationLayers, std::vector<char const*> const& requiredPhysicalDeviceExtensions)
+{
+	std::vector<float> queuePriorities = {1.0f};
+	std::unordered_set<uint32_t> uniqueQueueFamilyIndices = {queueFamilyIndices.graphicsFamily, queueFamilyIndices.presentationFamily};
+	std::vector<vk::DeviceQueueCreateInfo> deviceQueueCreateInfos{};
+	for (auto index : uniqueQueueFamilyIndices)
+	{
+		deviceQueueCreateInfos.push_back({{}, index, queuePriorities});
+	}
+	vk::PhysicalDeviceFeatures physicalDeviceFeatures{};
+	vk::DeviceCreateInfo deviceCreateInfo({}, deviceQueueCreateInfos, validationLayers, requiredPhysicalDeviceExtensions, &physicalDeviceFeatures);
+	return physicalDevice.createDeviceUnique(deviceCreateInfo);
 }

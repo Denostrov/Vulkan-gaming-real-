@@ -65,7 +65,7 @@ inline std::string toString(vk::PhysicalDeviceType type)
 }
 inline std::string toString(vk::SampleCountFlags flags)
 {
-	return toString(VkSampleCountFlags(flags));
+	return toString((VkSampleCountFlags(flags) + 1) / 2);
 }
 inline std::string toString(bool val)
 {
@@ -74,6 +74,855 @@ inline std::string toString(bool val)
 inline std::string toString(QueueFamilyIndices const& val)
 {
 	return std::vformat("{{Graphics: {}, Presentation: {}}}"sv, std::make_format_args(val.graphicsFamily, val.presentationFamily));
+}
+inline std::string toString(vk::Extent2D const& val)
+{
+	return std::vformat("{{{},{}}}"sv, std::make_format_args(val.width, val.height));
+}
+inline std::string toString(vk::SurfaceTransformFlagBitsKHR val)
+{
+	switch (val)
+	{
+	case vk::SurfaceTransformFlagBitsKHR::eIdentity:
+		return "Identity"s;
+		break;
+	case vk::SurfaceTransformFlagBitsKHR::eRotate90:
+		return "Rotate 90"s;
+		break;
+	case vk::SurfaceTransformFlagBitsKHR::eRotate180:
+		return "Rotate 180"s;
+		break;
+	case vk::SurfaceTransformFlagBitsKHR::eRotate270:
+		return "Rotate 270"s;
+		break;
+	case vk::SurfaceTransformFlagBitsKHR::eHorizontalMirror:
+		return "Horizontal mirror"s;
+		break;
+	case vk::SurfaceTransformFlagBitsKHR::eHorizontalMirrorRotate90:
+		return "Horizontal mirror rotate 90"s;
+		break;
+	case vk::SurfaceTransformFlagBitsKHR::eHorizontalMirrorRotate180:
+		return "Horizontal mirror rotate 180"s;
+		break;
+	case vk::SurfaceTransformFlagBitsKHR::eHorizontalMirrorRotate270:
+		return "Horizontal mirror rotate 270"s;
+		break;
+	case vk::SurfaceTransformFlagBitsKHR::eInherit:
+		return "Inherit"s;
+		break;
+	default:
+		return "Unknown"s;
+		break;
+	}
+}
+inline std::string toString(vk::SurfaceTransformFlagsKHR val)
+{
+	auto result = ""s;
+	result += val & vk::SurfaceTransformFlagBitsKHR::eIdentity ? toString(vk::SurfaceTransformFlagBitsKHR::eIdentity) + " "s : ""s;
+	result += val & vk::SurfaceTransformFlagBitsKHR::eRotate90 ? toString(vk::SurfaceTransformFlagBitsKHR::eRotate90) + " "s : ""s;
+	result += val & vk::SurfaceTransformFlagBitsKHR::eRotate180 ? toString(vk::SurfaceTransformFlagBitsKHR::eRotate180) + " "s : ""s;
+	result += val & vk::SurfaceTransformFlagBitsKHR::eRotate270 ? toString(vk::SurfaceTransformFlagBitsKHR::eRotate270) + " "s : ""s;
+	result += val & vk::SurfaceTransformFlagBitsKHR::eHorizontalMirror ? toString(vk::SurfaceTransformFlagBitsKHR::eHorizontalMirror) + " "s : ""s;
+	result += val & vk::SurfaceTransformFlagBitsKHR::eHorizontalMirrorRotate90 ? toString(vk::SurfaceTransformFlagBitsKHR::eHorizontalMirrorRotate90) + " "s : ""s;
+	result += val & vk::SurfaceTransformFlagBitsKHR::eHorizontalMirrorRotate180 ? toString(vk::SurfaceTransformFlagBitsKHR::eHorizontalMirrorRotate180) + " "s : ""s;
+	result += val & vk::SurfaceTransformFlagBitsKHR::eHorizontalMirrorRotate270 ? toString(vk::SurfaceTransformFlagBitsKHR::eHorizontalMirrorRotate270) + " "s : ""s;
+	result += val & vk::SurfaceTransformFlagBitsKHR::eInherit ? toString(vk::SurfaceTransformFlagBitsKHR::eInherit) : ""s;
+	return result;
+}
+inline std::string toString(vk::CompositeAlphaFlagBitsKHR val)
+{
+	switch (val)
+	{
+	case vk::CompositeAlphaFlagBitsKHR::eOpaque:
+		return "Opaque"s;
+		break;
+	case vk::CompositeAlphaFlagBitsKHR::ePreMultiplied:
+		return "Pre Multiplied"s;
+		break;
+	case vk::CompositeAlphaFlagBitsKHR::ePostMultiplied:
+		return "Post Multiplied"s;
+		break;
+	case vk::CompositeAlphaFlagBitsKHR::eInherit:
+		return "Inherit"s;
+		break;
+	default:
+		return "Unknown"s;
+		break;
+	}
+}
+inline std::string toString(vk::CompositeAlphaFlagsKHR val)
+{
+	auto result = ""s;
+	result += val & vk::CompositeAlphaFlagBitsKHR::eOpaque ? toString(vk::CompositeAlphaFlagBitsKHR::eOpaque) + " "s : ""s;
+	result += val & vk::CompositeAlphaFlagBitsKHR::ePreMultiplied ? toString(vk::CompositeAlphaFlagBitsKHR::ePreMultiplied) + " "s : ""s;
+	result += val & vk::CompositeAlphaFlagBitsKHR::ePostMultiplied ? toString(vk::CompositeAlphaFlagBitsKHR::ePostMultiplied) + " "s : ""s;
+	result += val & vk::CompositeAlphaFlagBitsKHR::eInherit ? toString(vk::CompositeAlphaFlagBitsKHR::eInherit) : ""s;
+	return result;
+}
+inline std::string toString(vk::ImageUsageFlagBits val)
+{
+	switch (val)
+	{
+	case vk::ImageUsageFlagBits::eTransferSrc:
+		return "Transfer source"s;
+		break;
+	case vk::ImageUsageFlagBits::eTransferDst:
+		return "Transfer destination"s;
+		break;
+	case vk::ImageUsageFlagBits::eSampled:
+		return "Sampled"s;
+		break;
+	case vk::ImageUsageFlagBits::eStorage:
+		return "Storage"s;
+		break;
+	case vk::ImageUsageFlagBits::eColorAttachment:
+		return "Color attachment"s;
+		break;
+	case vk::ImageUsageFlagBits::eDepthStencilAttachment:
+		return "Depth stencil attachment"s;
+		break;
+	case vk::ImageUsageFlagBits::eTransientAttachment:
+		return "Transient attachment"s;
+		break;
+	case vk::ImageUsageFlagBits::eInputAttachment:
+		return "Input attachment"s;
+		break;
+	default:
+		return "Unknown"s;
+		break;
+	}
+}
+inline std::string toString(vk::ImageUsageFlags val)
+{
+	auto result = ""s;
+	result += val & vk::ImageUsageFlagBits::eTransferSrc ? toString(vk::ImageUsageFlagBits::eTransferSrc) + " "s : ""s;
+	result += val & vk::ImageUsageFlagBits::eTransferDst ? toString(vk::ImageUsageFlagBits::eTransferDst) + " "s : ""s;
+	result += val & vk::ImageUsageFlagBits::eSampled ? toString(vk::ImageUsageFlagBits::eSampled) + " "s : ""s;
+	result += val & vk::ImageUsageFlagBits::eStorage ? toString(vk::ImageUsageFlagBits::eStorage) + " "s : ""s;
+	result += val & vk::ImageUsageFlagBits::eColorAttachment ? toString(vk::ImageUsageFlagBits::eColorAttachment) + " "s : ""s;
+	result += val & vk::ImageUsageFlagBits::eDepthStencilAttachment ? toString(vk::ImageUsageFlagBits::eDepthStencilAttachment) + " "s : ""s;
+	result += val & vk::ImageUsageFlagBits::eTransientAttachment ? toString(vk::ImageUsageFlagBits::eTransientAttachment) + " "s : ""s;
+	result += val & vk::ImageUsageFlagBits::eInputAttachment ? toString(vk::ImageUsageFlagBits::eInputAttachment) : ""s;
+	return result;
+}
+inline std::string toString(vk::Format val)
+{
+	switch (val)
+	{
+	case vk::Format::eUndefined:
+		return "Undefined"s;
+		break;
+	case vk::Format::eR4G4UnormPack8:
+		return "eR4G4UnormPack8"s;
+		break;
+	case vk::Format::eR4G4B4A4UnormPack16:
+		return "eR4G4B4A4UnormPack16"s;
+		break;
+	case vk::Format::eB4G4R4A4UnormPack16:
+		return "eB4G4R4A4UnormPack16"s;
+		break;
+	case vk::Format::eR5G6B5UnormPack16:
+		return "eR5G6B5UnormPack16"s;
+		break;
+	case vk::Format::eB5G6R5UnormPack16:
+		return "eB5G6R5UnormPack16"s;
+		break;
+	case vk::Format::eR5G5B5A1UnormPack16:
+		return "eR5G5B5A1UnormPack16"s;
+		break;
+	case vk::Format::eB5G5R5A1UnormPack16:
+		return "eB5G5R5A1UnormPack16"s;
+		break;
+	case vk::Format::eA1R5G5B5UnormPack16:
+		return "eA1R5G5B5UnormPack16"s;
+		break;
+	case vk::Format::eR8Unorm:
+		return "eR8Unorm"s;
+		break;
+	case vk::Format::eR8Snorm:
+		return "eR8Snorm"s;
+		break;
+	case vk::Format::eR8Uscaled:
+		return "eR8Uscaled"s;
+		break;
+	case vk::Format::eR8Sscaled:
+		return "eR8Sscaled"s;
+		break;
+	case vk::Format::eR8Uint:
+		return "eR8Uint"s;
+		break;
+	case vk::Format::eR8Sint:
+		return "eR8Sint"s;
+		break;
+	case vk::Format::eR8Srgb:
+		return "eR8Srgb"s;
+		break;
+	case vk::Format::eR8G8Unorm:
+		return "eR8G8Unorm"s;
+		break;
+	case vk::Format::eR8G8Snorm:
+		return "eR8G8Snorm"s;
+		break;
+	case vk::Format::eR8G8Uscaled:
+		return "eR8G8Uscaled"s;
+		break;
+	case vk::Format::eR8G8Sscaled:
+		return "eR8G8Sscaled"s;
+		break;
+	case vk::Format::eR8G8Uint:
+		return "eR8G8Uint"s;
+		break;
+	case vk::Format::eR8G8Sint:
+		return "eR8G8Sint"s;
+		break;
+	case vk::Format::eR8G8Srgb:
+		return "eR8G8Srgb"s;
+		break;
+	case vk::Format::eR8G8B8Unorm:
+		return "eR8G8B8Unorm"s;
+		break;
+	case vk::Format::eR8G8B8Snorm:
+		return "eR8G8B8Snorm"s;
+		break;
+	case vk::Format::eR8G8B8Uscaled:
+		return "eR8G8B8Uscaled"s;
+		break;
+	case vk::Format::eR8G8B8Sscaled:
+		return "eR8G8B8Sscaled"s;
+		break;
+	case vk::Format::eR8G8B8Uint:
+		return "eR8G8B8Uint"s;
+		break;
+	case vk::Format::eR8G8B8Sint:
+		return "eR8G8B8Sint"s;
+		break;
+	case vk::Format::eR8G8B8Srgb:
+		return "eR8G8B8Srgb"s;
+		break;
+	case vk::Format::eB8G8R8Unorm:
+		return "eB8G8R8Unorm"s;
+		break;
+	case vk::Format::eB8G8R8Snorm:
+		return "eB8G8R8Snorm"s;
+		break;
+	case vk::Format::eB8G8R8Uscaled:
+		return "eB8G8R8Uscaled"s;
+		break;
+	case vk::Format::eB8G8R8Sscaled:
+		return "eB8G8R8Sscaled"s;
+		break;
+	case vk::Format::eB8G8R8Uint:
+		return "eB8G8R8Uint"s;
+		break;
+	case vk::Format::eB8G8R8Sint:
+		return "eB8G8R8Sint"s;
+		break;
+	case vk::Format::eB8G8R8Srgb:
+		return "eB8G8R8Srgb"s;
+		break;
+	case vk::Format::eR8G8B8A8Unorm:
+		return "eR8G8B8A8Unorm"s;
+		break;
+	case vk::Format::eR8G8B8A8Snorm:
+		return "eR8G8B8A8Snorm"s;
+		break;
+	case vk::Format::eR8G8B8A8Uscaled:
+		return "eR8G8B8A8Uscaled"s;
+		break;
+	case vk::Format::eR8G8B8A8Sscaled:
+		return "eR8G8B8A8Sscaled"s;
+		break;
+	case vk::Format::eR8G8B8A8Uint:
+		return "eR8G8B8A8Uint"s;
+		break;
+	case vk::Format::eR8G8B8A8Sint:
+		return "eR8G8B8A8Sint"s;
+		break;
+	case vk::Format::eR8G8B8A8Srgb:
+		return "eR8G8B8A8Srgb"s;
+		break;
+	case vk::Format::eB8G8R8A8Unorm:
+		return "eB8G8R8A8Unorm"s;
+		break;
+	case vk::Format::eB8G8R8A8Snorm:
+		return "eB8G8R8A8Snorm"s;
+		break;
+	case vk::Format::eB8G8R8A8Uscaled:
+		return "eB8G8R8A8Uscaled"s;
+		break;
+	case vk::Format::eB8G8R8A8Sscaled:
+		return "eB8G8R8A8Sscaled"s;
+		break;
+	case vk::Format::eB8G8R8A8Uint:
+		return "eB8G8R8A8Uint"s;
+		break;
+	case vk::Format::eB8G8R8A8Sint:
+		return "eB8G8R8A8Sint"s;
+		break;
+	case vk::Format::eB8G8R8A8Srgb:
+		return "eB8G8R8A8Srgb"s;
+		break;
+	case vk::Format::eA8B8G8R8UnormPack32:
+		return "eA8B8G8R8UnormPack32"s;
+		break;
+	case vk::Format::eA8B8G8R8SnormPack32:
+		return "eA8B8G8R8SnormPack32"s;
+		break;
+	case vk::Format::eA8B8G8R8UscaledPack32:
+		return "eA8B8G8R8UscaledPack32"s;
+		break;
+	case vk::Format::eA8B8G8R8SscaledPack32:
+		return "eA8B8G8R8SscaledPack32"s;
+		break;
+	case vk::Format::eA8B8G8R8UintPack32:
+		return "eA8B8G8R8UintPack32"s;
+		break;
+	case vk::Format::eA8B8G8R8SintPack32:
+		return "eA8B8G8R8SintPack32"s;
+		break;
+	case vk::Format::eA8B8G8R8SrgbPack32:
+		return "eA8B8G8R8SrgbPack32"s;
+		break;
+	case vk::Format::eA2R10G10B10UnormPack32:
+		return "eA2R10G10B10UnormPack32"s;
+		break;
+	case vk::Format::eA2R10G10B10SnormPack32:
+		return "eA2R10G10B10SnormPack32"s;
+		break;
+	case vk::Format::eA2R10G10B10UscaledPack32:
+		return "eA2R10G10B10UscaledPack32"s;
+		break;
+	case vk::Format::eA2R10G10B10SscaledPack32:
+		return "eA2R10G10B10SscaledPack32"s;
+		break;
+	case vk::Format::eA2R10G10B10UintPack32:
+		return "eA2R10G10B10UintPack32"s;
+		break;
+	case vk::Format::eA2R10G10B10SintPack32:
+		return "eA2R10G10B10SintPack32"s;
+		break;
+	case vk::Format::eA2B10G10R10UnormPack32:
+		return "eA2B10G10R10UnormPack32"s;
+		break;
+	case vk::Format::eA2B10G10R10SnormPack32:
+		return "eA2B10G10R10SnormPack32"s;
+		break;
+	case vk::Format::eA2B10G10R10UscaledPack32:
+		return "eA2B10G10R10UscaledPack32"s;
+		break;
+	case vk::Format::eA2B10G10R10SscaledPack32:
+		return "eA2B10G10R10SscaledPack32"s;
+		break;
+	case vk::Format::eA2B10G10R10UintPack32:
+		return "eA2B10G10R10UintPack32"s;
+		break;
+	case vk::Format::eA2B10G10R10SintPack32:
+		return "eA2B10G10R10SintPack32"s;
+		break;
+	case vk::Format::eR16Unorm:
+		return "eR16Unorm"s;
+		break;
+	case vk::Format::eR16Snorm:
+		return "eR16Snorm"s;
+		break;
+	case vk::Format::eR16Uscaled:
+		return "eR16Uscaled"s;
+		break;
+	case vk::Format::eR16Sscaled:
+		return "eR16Sscaled"s;
+		break;
+	case vk::Format::eR16Uint:
+		return "eR16Uint"s;
+		break;
+	case vk::Format::eR16Sint:
+		return "eR16Sint"s;
+		break;
+	case vk::Format::eR16Sfloat:
+		return "eR16Sfloat"s;
+		break;
+	case vk::Format::eR16G16Unorm:
+		return "eR16G16Unorm"s;
+		break;
+	case vk::Format::eR16G16Snorm:
+		return "eR16G16Snorm"s;
+		break;
+	case vk::Format::eR16G16Uscaled:
+		return "eR16G16Uscaled"s;
+		break;
+	case vk::Format::eR16G16Sscaled:
+		return "eR16G16Sscaled"s;
+		break;
+	case vk::Format::eR16G16Uint:
+		return "eR16G16Uint"s;
+		break;
+	case vk::Format::eR16G16Sint:
+		return "eR16G16Sint"s;
+		break;
+	case vk::Format::eR16G16Sfloat:
+		return "eR16G16Sfloat"s;
+		break;
+	case vk::Format::eR16G16B16Unorm:
+		return "eR16G16B16Unorm"s;
+		break;
+	case vk::Format::eR16G16B16Snorm:
+		return "eR16G16B16Snorm"s;
+		break;
+	case vk::Format::eR16G16B16Uscaled:
+		return "eR16G16B16Uscaled"s;
+		break;
+	case vk::Format::eR16G16B16Sscaled:
+		return "eR16G16B16Sscaled"s;
+		break;
+	case vk::Format::eR16G16B16Uint:
+		return "eR16G16B16Uint"s;
+		break;
+	case vk::Format::eR16G16B16Sint:
+		return "eR16G16B16Sint"s;
+		break;
+	case vk::Format::eR16G16B16Sfloat:
+		return "eR16G16B16Sfloat"s;
+		break;
+	case vk::Format::eR16G16B16A16Unorm:
+		return "eR16G16B16A16Unorm"s;
+		break;
+	case vk::Format::eR16G16B16A16Snorm:
+		return "eR16G16B16A16Snorm"s;
+		break;
+	case vk::Format::eR16G16B16A16Uscaled:
+		return "eR16G16B16A16Uscaled"s;
+		break;
+	case vk::Format::eR16G16B16A16Sscaled:
+		return "eR16G16B16A16Sscaled"s;
+		break;
+	case vk::Format::eR16G16B16A16Uint:
+		return "eR16G16B16A16Uint"s;
+		break;
+	case vk::Format::eR16G16B16A16Sint:
+		return "eR16G16B16A16Sint"s;
+		break;
+	case vk::Format::eR16G16B16A16Sfloat:
+		return "eR16G16B16A16Sfloat"s;
+		break;
+	case vk::Format::eR32Uint:
+		return "eR32Uint"s;
+		break;
+	case vk::Format::eR32Sint:
+		return "eR32Sint"s;
+		break;
+	case vk::Format::eR32Sfloat:
+		return "eR32Sfloat"s;
+		break;
+	case vk::Format::eR32G32Uint:
+		return "eR32G32Uint"s;
+		break;
+	case vk::Format::eR32G32Sint:
+		return "eR32G32Sint"s;
+		break;
+	case vk::Format::eR32G32Sfloat:
+		return "eR32G32Sfloat"s;
+		break;
+	case vk::Format::eR32G32B32Uint:
+		return "eR32G32B32Uint"s;
+		break;
+	case vk::Format::eR32G32B32Sint:
+		return "eR32G32B32Sint"s;
+		break;
+	case vk::Format::eR32G32B32Sfloat:
+		return "eR32G32B32Sfloat"s;
+		break;
+	case vk::Format::eR32G32B32A32Uint:
+		return "eR32G32B32A32Uint"s;
+		break;
+	case vk::Format::eR32G32B32A32Sint:
+		return "eR32G32B32A32Sint"s;
+		break;
+	case vk::Format::eR32G32B32A32Sfloat:
+		return "eR32G32B32A32Sfloat"s;
+		break;
+	case vk::Format::eR64Uint:
+		return "eR64Uint"s;
+		break;
+	case vk::Format::eR64Sint:
+		return "eR64Sint"s;
+		break;
+	case vk::Format::eR64Sfloat:
+		return "eR64Sfloat"s;
+		break;
+	case vk::Format::eR64G64Uint:
+		return "eR64G64Uint"s;
+		break;
+	case vk::Format::eR64G64Sint:
+		return "eR64G64Sint"s;
+		break;
+	case vk::Format::eR64G64Sfloat:
+		return "eR64G64Sfloat"s;
+		break;
+	case vk::Format::eR64G64B64Uint:
+		return "eR64G64B64Uint"s;
+		break;
+	case vk::Format::eR64G64B64Sint:
+		return "eR64G64B64Sint"s;
+		break;
+	case vk::Format::eR64G64B64Sfloat:
+		return "eR64G64B64Sfloat"s;
+		break;
+	case vk::Format::eR64G64B64A64Uint:
+		return "eR64G64B64A64Uint"s;
+		break;
+	case vk::Format::eR64G64B64A64Sint:
+		return "eR64G64B64A64Sint"s;
+		break;
+	case vk::Format::eR64G64B64A64Sfloat:
+		return "eR64G64B64A64Sfloat"s;
+		break;
+	case vk::Format::eB10G11R11UfloatPack32:
+		return "eB10G11R11UfloatPack32"s;
+		break;
+	case vk::Format::eE5B9G9R9UfloatPack32:
+		return "eE5B9G9R9UfloatPack32"s;
+		break;
+	case vk::Format::eD16Unorm:
+		return "eD16Unorm"s;
+		break;
+	case vk::Format::eX8D24UnormPack32:
+		return "eX8D24UnormPack32"s;
+		break;
+	case vk::Format::eD32Sfloat:
+		return "eD32Sfloat"s;
+		break;
+	case vk::Format::eS8Uint:
+		return "eS8Uint"s;
+		break;
+	case vk::Format::eD16UnormS8Uint:
+		return "eD16UnormS8Uint"s;
+		break;
+	case vk::Format::eD24UnormS8Uint:
+		return "eD24UnormS8Uint"s;
+		break;
+	case vk::Format::eD32SfloatS8Uint:
+		return "eD32SfloatS8Uint"s;
+		break;
+	case vk::Format::eBc1RgbUnormBlock:
+		break;
+	case vk::Format::eBc1RgbSrgbBlock:
+		break;
+	case vk::Format::eBc1RgbaUnormBlock:
+		break;
+	case vk::Format::eBc1RgbaSrgbBlock:
+		break;
+	case vk::Format::eBc2UnormBlock:
+		break;
+	case vk::Format::eBc2SrgbBlock:
+		break;
+	case vk::Format::eBc3UnormBlock:
+		break;
+	case vk::Format::eBc3SrgbBlock:
+		break;
+	case vk::Format::eBc4UnormBlock:
+		break;
+	case vk::Format::eBc4SnormBlock:
+		break;
+	case vk::Format::eBc5UnormBlock:
+		break;
+	case vk::Format::eBc5SnormBlock:
+		break;
+	case vk::Format::eBc6HUfloatBlock:
+		break;
+	case vk::Format::eBc6HSfloatBlock:
+		break;
+	case vk::Format::eBc7UnormBlock:
+		break;
+	case vk::Format::eBc7SrgbBlock:
+		break;
+	case vk::Format::eEtc2R8G8B8UnormBlock:
+		break;
+	case vk::Format::eEtc2R8G8B8SrgbBlock:
+		break;
+	case vk::Format::eEtc2R8G8B8A1UnormBlock:
+		break;
+	case vk::Format::eEtc2R8G8B8A1SrgbBlock:
+		break;
+	case vk::Format::eEtc2R8G8B8A8UnormBlock:
+		break;
+	case vk::Format::eEtc2R8G8B8A8SrgbBlock:
+		break;
+	case vk::Format::eEacR11UnormBlock:
+		break;
+	case vk::Format::eEacR11SnormBlock:
+		break;
+	case vk::Format::eEacR11G11UnormBlock:
+		break;
+	case vk::Format::eEacR11G11SnormBlock:
+		break;
+	case vk::Format::eAstc4x4UnormBlock:
+		break;
+	case vk::Format::eAstc4x4SrgbBlock:
+		break;
+	case vk::Format::eAstc5x4UnormBlock:
+		break;
+	case vk::Format::eAstc5x4SrgbBlock:
+		break;
+	case vk::Format::eAstc5x5UnormBlock:
+		break;
+	case vk::Format::eAstc5x5SrgbBlock:
+		break;
+	case vk::Format::eAstc6x5UnormBlock:
+		break;
+	case vk::Format::eAstc6x5SrgbBlock:
+		break;
+	case vk::Format::eAstc6x6UnormBlock:
+		break;
+	case vk::Format::eAstc6x6SrgbBlock:
+		break;
+	case vk::Format::eAstc8x5UnormBlock:
+		break;
+	case vk::Format::eAstc8x5SrgbBlock:
+		break;
+	case vk::Format::eAstc8x6UnormBlock:
+		break;
+	case vk::Format::eAstc8x6SrgbBlock:
+		break;
+	case vk::Format::eAstc8x8UnormBlock:
+		break;
+	case vk::Format::eAstc8x8SrgbBlock:
+		break;
+	case vk::Format::eAstc10x5UnormBlock:
+		break;
+	case vk::Format::eAstc10x5SrgbBlock:
+		break;
+	case vk::Format::eAstc10x6UnormBlock:
+		break;
+	case vk::Format::eAstc10x6SrgbBlock:
+		break;
+	case vk::Format::eAstc10x8UnormBlock:
+		break;
+	case vk::Format::eAstc10x8SrgbBlock:
+		break;
+	case vk::Format::eAstc10x10UnormBlock:
+		break;
+	case vk::Format::eAstc10x10SrgbBlock:
+		break;
+	case vk::Format::eAstc12x10UnormBlock:
+		break;
+	case vk::Format::eAstc12x10SrgbBlock:
+		break;
+	case vk::Format::eAstc12x12UnormBlock:
+		break;
+	case vk::Format::eAstc12x12SrgbBlock:
+		break;
+	case vk::Format::eG8B8G8R8422Unorm:
+		break;
+	case vk::Format::eB8G8R8G8422Unorm:
+		break;
+	case vk::Format::eG8B8R83Plane420Unorm:
+		break;
+	case vk::Format::eG8B8R82Plane420Unorm:
+		break;
+	case vk::Format::eG8B8R83Plane422Unorm:
+		break;
+	case vk::Format::eG8B8R82Plane422Unorm:
+		break;
+	case vk::Format::eG8B8R83Plane444Unorm:
+		break;
+	case vk::Format::eR10X6UnormPack16:
+		break;
+	case vk::Format::eR10X6G10X6Unorm2Pack16:
+		break;
+	case vk::Format::eR10X6G10X6B10X6A10X6Unorm4Pack16:
+		break;
+	case vk::Format::eG10X6B10X6G10X6R10X6422Unorm4Pack16:
+		break;
+	case vk::Format::eB10X6G10X6R10X6G10X6422Unorm4Pack16:
+		break;
+	case vk::Format::eG10X6B10X6R10X63Plane420Unorm3Pack16:
+		break;
+	case vk::Format::eG10X6B10X6R10X62Plane420Unorm3Pack16:
+		break;
+	case vk::Format::eG10X6B10X6R10X63Plane422Unorm3Pack16:
+		break;
+	case vk::Format::eG10X6B10X6R10X62Plane422Unorm3Pack16:
+		break;
+	case vk::Format::eG10X6B10X6R10X63Plane444Unorm3Pack16:
+		break;
+	case vk::Format::eR12X4UnormPack16:
+		break;
+	case vk::Format::eR12X4G12X4Unorm2Pack16:
+		break;
+	case vk::Format::eR12X4G12X4B12X4A12X4Unorm4Pack16:
+		break;
+	case vk::Format::eG12X4B12X4G12X4R12X4422Unorm4Pack16:
+		break;
+	case vk::Format::eB12X4G12X4R12X4G12X4422Unorm4Pack16:
+		break;
+	case vk::Format::eG12X4B12X4R12X43Plane420Unorm3Pack16:
+		break;
+	case vk::Format::eG12X4B12X4R12X42Plane420Unorm3Pack16:
+		break;
+	case vk::Format::eG12X4B12X4R12X43Plane422Unorm3Pack16:
+		break;
+	case vk::Format::eG12X4B12X4R12X42Plane422Unorm3Pack16:
+		break;
+	case vk::Format::eG12X4B12X4R12X43Plane444Unorm3Pack16:
+		break;
+	case vk::Format::eG16B16G16R16422Unorm:
+		break;
+	case vk::Format::eB16G16R16G16422Unorm:
+		break;
+	case vk::Format::eG16B16R163Plane420Unorm:
+		break;
+	case vk::Format::eG16B16R162Plane420Unorm:
+		break;
+	case vk::Format::eG16B16R163Plane422Unorm:
+		break;
+	case vk::Format::eG16B16R162Plane422Unorm:
+		break;
+	case vk::Format::eG16B16R163Plane444Unorm:
+		break;
+	case vk::Format::eG8B8R82Plane444Unorm:
+		break;
+	case vk::Format::eG10X6B10X6R10X62Plane444Unorm3Pack16:
+		break;
+	case vk::Format::eG12X4B12X4R12X42Plane444Unorm3Pack16:
+		break;
+	case vk::Format::eG16B16R162Plane444Unorm:
+		break;
+	case vk::Format::eA4R4G4B4UnormPack16:
+		break;
+	case vk::Format::eA4B4G4R4UnormPack16:
+		break;
+	case vk::Format::eAstc4x4SfloatBlock:
+		break;
+	case vk::Format::eAstc5x4SfloatBlock:
+		break;
+	case vk::Format::eAstc5x5SfloatBlock:
+		break;
+	case vk::Format::eAstc6x5SfloatBlock:
+		break;
+	case vk::Format::eAstc6x6SfloatBlock:
+		break;
+	case vk::Format::eAstc8x5SfloatBlock:
+		break;
+	case vk::Format::eAstc8x6SfloatBlock:
+		break;
+	case vk::Format::eAstc8x8SfloatBlock:
+		break;
+	case vk::Format::eAstc10x5SfloatBlock:
+		break;
+	case vk::Format::eAstc10x6SfloatBlock:
+		break;
+	case vk::Format::eAstc10x8SfloatBlock:
+		break;
+	case vk::Format::eAstc10x10SfloatBlock:
+		break;
+	case vk::Format::eAstc12x10SfloatBlock:
+		break;
+	case vk::Format::eAstc12x12SfloatBlock:
+		break;
+	case vk::Format::ePvrtc12BppUnormBlockIMG:
+		break;
+	case vk::Format::ePvrtc14BppUnormBlockIMG:
+		break;
+	case vk::Format::ePvrtc22BppUnormBlockIMG:
+		break;
+	case vk::Format::ePvrtc24BppUnormBlockIMG:
+		break;
+	case vk::Format::ePvrtc12BppSrgbBlockIMG:
+		break;
+	case vk::Format::ePvrtc14BppSrgbBlockIMG:
+		break;
+	case vk::Format::ePvrtc22BppSrgbBlockIMG:
+		break;
+	case vk::Format::ePvrtc24BppSrgbBlockIMG:
+		break;
+	default:
+		return "Unknown"s;
+		break;
+	}
+	return "Unspecified"s;
+}
+inline std::string toString(vk::ColorSpaceKHR val)
+{
+	switch (val)
+	{
+	case vk::ColorSpaceKHR::eSrgbNonlinear:
+		return "SRGB nonlinear"s;
+		break;
+	case vk::ColorSpaceKHR::eDisplayP3NonlinearEXT:
+		return "Display P3 nonlinear"s;
+		break;
+	case vk::ColorSpaceKHR::eExtendedSrgbLinearEXT:
+		return "Extended SRGB linear"s;
+		break;
+	case vk::ColorSpaceKHR::eDisplayP3LinearEXT:
+		return "Display P3 linear"s;
+		break;
+	case vk::ColorSpaceKHR::eDciP3NonlinearEXT:
+		return "DCI P3 nonlinear"s;
+		break;
+	case vk::ColorSpaceKHR::eBt709LinearEXT:
+		return "BT709 linear"s;
+		break;
+	case vk::ColorSpaceKHR::eBt709NonlinearEXT:
+		return "BT709 nonlinear"s;
+		break;
+	case vk::ColorSpaceKHR::eBt2020LinearEXT:
+		return "BT2020 linear"s;
+		break;
+	case vk::ColorSpaceKHR::eHdr10St2084EXT:
+		return "HDR 10 ST 2084"s;
+		break;
+	case vk::ColorSpaceKHR::eDolbyvisionEXT:
+		return "Dolbyvision"s;
+		break;
+	case vk::ColorSpaceKHR::eHdr10HlgEXT:
+		return "HDR 10 HLG"s;
+		break;
+	case vk::ColorSpaceKHR::eAdobergbLinearEXT:
+		return "Adobe RGB linear"s;
+		break;
+	case vk::ColorSpaceKHR::eAdobergbNonlinearEXT:
+		return "Adobe RGB nonlinear"s;
+		break;
+	case vk::ColorSpaceKHR::ePassThroughEXT:
+		return "Pass Through"s;
+		break;
+	case vk::ColorSpaceKHR::eExtendedSrgbNonlinearEXT:
+		return "Extended SRGB nonlinear"s;
+		break;
+	case vk::ColorSpaceKHR::eDisplayNativeAMD:
+		return "Display native"s;
+		break;
+	default:
+		return "Undefined"s;
+		break;
+	}
+}
+inline std::string toString(vk::PresentModeKHR val)
+{
+	switch (val)
+	{
+	case vk::PresentModeKHR::eImmediate:
+		return "Immediate"s;
+		break;
+	case vk::PresentModeKHR::eMailbox:
+		return "Mailbox"s;
+		break;
+	case vk::PresentModeKHR::eFifo:
+		return "FIFO"s;
+		break;
+	case vk::PresentModeKHR::eFifoRelaxed:
+		return "FIFO relaxed"s;
+		break;
+	case vk::PresentModeKHR::eSharedDemandRefresh:
+		return "Shared demand refresh"s;
+		break;
+	case vk::PresentModeKHR::eSharedContinuousRefresh:
+		return "Shared continuous refresh"s;
+		break;
+	default:
+		return "Undefined"s;
+		break;
+	}
 }
 template<class T>
 inline std::string toString() {}
@@ -91,6 +940,21 @@ template<>
 inline std::string toString<vk::LayerProperties>()
 {
 	return "Validation layer"s;
+}
+template<>
+inline std::string toString<vk::SurfaceCapabilitiesKHR>()
+{
+	return "Surface capabilities"s;
+}
+template<>
+inline std::string toString<vk::SurfaceFormatKHR>()
+{
+	return "Surface format"s;
+}
+template<>
+inline std::string toString<vk::PresentModeKHR>()
+{
+	return "Present mode"s;
 }
 template<class T, class V>
 inline std::string toString() {}
@@ -426,6 +1290,27 @@ inline auto getFormatString(vk::PhysicalDeviceFeatures const& val)
 									LabelValuePair{"Sparse residency aliased"s, bool(val.sparseResidencyAliased)},
 									LabelValuePair{"Variable multisample rate"s, bool(val.variableMultisampleRate)},
 									LabelValuePair{"Inherited queries"s, bool(val.inheritedQueries)});
+}
+inline auto getFormatString(vk::SurfaceCapabilitiesKHR const& val)
+{
+	return getLabelValuePairsString(LabelValuePair{"Min image count"s, val.minImageCount},
+									LabelValuePair{"Max image count"s, val.maxImageCount},
+									LabelValuePair{"Current extent"s, val.currentExtent},
+									LabelValuePair{"Min image extent"s, val.minImageExtent},
+									LabelValuePair{"Max image extent"s, val.maxImageExtent},
+									LabelValuePair{"Max image array layers"s, val.maxImageArrayLayers},
+									LabelValuePair{"Supported transforms"s, val.supportedTransforms},
+									LabelValuePair{"Current transform"s, val.currentTransform},
+									LabelValuePair{"Supported composite alpha"s, val.supportedCompositeAlpha},
+									LabelValuePair{"Supported usage flags"s, val.supportedUsageFlags});
+}
+inline auto getFormatString(vk::SurfaceFormatKHR const& val)
+{
+	return getLabelValuePairsString(LabelValuePair{"Format"s, val.format}, LabelValuePair{"Color space"s, val.colorSpace});
+}
+inline auto getFormatString(vk::PresentModeKHR const& val)
+{
+	return getLabelValuePairsString(LabelValuePair{"Mode"s, val});
 }
 template<class T>
 inline auto getFormatString(std::vector<T> const& vals)

@@ -29,12 +29,10 @@ private:
 	vk::Queue graphicsQueue;
 	vk::Queue presentationQueue;
 
-	std::unique_ptr<vk::DebugUtilsMessengerCreateInfoEXT> getDebugUtilsMessengerCreateInfo();
-	std::vector<char const*> getValidationLayers();
-	std::vector<char const*> getInstanceExtensions();
 	vk::UniqueInstance createInstance(std::vector<char const*> const& validationLayers, std::vector<char const*> const& instanceExtensions,
 									  vk::DebugUtilsMessengerCreateInfoEXT* debugUtilsMessengerCreateInfo);
 	vk::UniqueDebugUtilsMessengerEXT createDebugUtilsMessenger(vk::DebugUtilsMessengerCreateInfoEXT const& debugUtilsMessengerCreateInfo);
 	vk::UniqueSurfaceKHR createSurface();
+	vk::UniqueDevice createDevice(std::vector<char const*> const& validationLayers, std::vector<char const*> const& requiredPhysicalDeviceExtensions);
 };
 
