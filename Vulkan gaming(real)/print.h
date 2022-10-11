@@ -20,12 +20,7 @@ inline std::string toString(T val)
 template<std::size_t N>
 inline std::string toString(vk::ArrayWrapper1D<char, N> const& arr)
 {
-	auto result = ""s;
-	for (auto const& elem : arr)
-	{
-		result += elem;
-	}
-	return result;
+	return arr;
 }
 template<class T, std::size_t N>
 inline std::string toString(std::array<T, N> const& arr)
