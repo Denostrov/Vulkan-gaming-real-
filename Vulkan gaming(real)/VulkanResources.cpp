@@ -292,7 +292,18 @@ bool VulkanResources::windowCloseStatus()
 vk::UniqueInstance VulkanResources::createInstance(std::vector<char const*> const& validationLayers, std::vector<char const*> const& instanceExtensions,
 												   vk::DebugUtilsMessengerCreateInfoEXT* debugUtilsMessengerCreateInfo)
 {
-	vk::ApplicationInfo applicationInfo{"Copesweeper", VK_MAKE_API_VERSION(0, 1, 0, 0), "Vulkan engine", VK_MAKE_API_VERSION(0, 1, 0, 0), VK_API_VERSION_1_3};
+	uint32_t vulkanVersion = 0;
+	if (VULKAN_HPP_DEFAULT_DISPATCHER.vkEnumerateInstanceVersion == nullptr)
+	{
+		vulkanVersion = VK_API_VERSION_1_0;
+	}
+	else
+	{
+		vulkanVersion = vk::enumerateInstanceVersion();
+	}
+	formatPrint(std::cout, "Vulkan instance version: {}.{}.{}.{}\n"sv, VK_API_VERSION_VARIANT(vulkanVersion), VK_API_VERSION_MAJOR(vulkanVersion),
+				VK_API_VERSION_MINOR(vulkanVersion), VK_API_VERSION_PATCH(vulkanVersion));
+	vk::ApplicationInfo applicationInfo{"Copesweeper", VK_MAKE_API_VERSION(0, 1, 0, 0), "Vulkan engine", VK_MAKE_API_VERSION(0, 1, 0, 0), vulkanVersion};
 
 	vk::InstanceCreateInfo instanceCreateInfo{{}, &applicationInfo, validationLayers, instanceExtensions, debugUtilsMessengerCreateInfo};
 	return vk::createInstanceUnique(instanceCreateInfo);
