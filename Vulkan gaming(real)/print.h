@@ -79,6 +79,10 @@ inline std::string toString(vk::Extent2D const& val)
 {
 	return std::vformat("{{{},{}}}"sv, std::make_format_args(val.width, val.height));
 }
+inline std::string toString(vk::Extent3D const& val)
+{
+	return std::vformat("{{{},{},{}}}"sv, std::make_format_args(val.width, val.height, val.depth));
+}
 inline std::string toString(vk::SurfaceTransformFlagBitsKHR val)
 {
 	switch (val)
@@ -203,6 +207,40 @@ inline std::string toString(vk::ImageUsageFlags val)
 	result += val & vk::ImageUsageFlagBits::eDepthStencilAttachment ? toString(vk::ImageUsageFlagBits::eDepthStencilAttachment) + " "s : ""s;
 	result += val & vk::ImageUsageFlagBits::eTransientAttachment ? toString(vk::ImageUsageFlagBits::eTransientAttachment) + " "s : ""s;
 	result += val & vk::ImageUsageFlagBits::eInputAttachment ? toString(vk::ImageUsageFlagBits::eInputAttachment) : ""s;
+	return result;
+}
+inline std::string toString(vk::QueueFlagBits val)
+{
+	switch (val)
+	{
+	case vk::QueueFlagBits::eGraphics:
+		return "Graphics"s;
+		break;
+	case vk::QueueFlagBits::eCompute:
+		return "Compute"s;
+		break;
+	case vk::QueueFlagBits::eTransfer:
+		return "Transfer"s;
+		break;
+	case vk::QueueFlagBits::eSparseBinding:
+		return "Sparse binding"s;
+		break;
+	case vk::QueueFlagBits::eProtected:
+		return "Protected"s;
+		break;
+	default:
+		return "Unknown"s;
+		break;
+	}
+}
+inline std::string toString(vk::QueueFlags val)
+{
+	auto result = ""s;
+	result += val & vk::QueueFlagBits::eGraphics ? toString(vk::QueueFlagBits::eGraphics) + " "s : ""s;
+	result += val & vk::QueueFlagBits::eCompute ? toString(vk::QueueFlagBits::eCompute) + " "s : ""s;
+	result += val & vk::QueueFlagBits::eTransfer ? toString(vk::QueueFlagBits::eTransfer) + " "s : ""s;
+	result += val & vk::QueueFlagBits::eSparseBinding ? toString(vk::QueueFlagBits::eSparseBinding) + " "s : ""s;
+	result += val & vk::QueueFlagBits::eProtected ? toString(vk::QueueFlagBits::eProtected) : ""s;
 	return result;
 }
 inline std::string toString(vk::Format val)
@@ -956,6 +994,11 @@ inline std::string toString<vk::PresentModeKHR>()
 {
 	return "Present mode"s;
 }
+template<>
+inline std::string toString<vk::QueueFamilyProperties>()
+{
+	return "Queue family"s;
+}
 template<class T, class V>
 inline std::string toString() {}
 template<>
@@ -1290,6 +1333,13 @@ inline auto getFormatString(vk::PhysicalDeviceFeatures const& val)
 									LabelValuePair{"Sparse residency aliased"s, bool(val.sparseResidencyAliased)},
 									LabelValuePair{"Variable multisample rate"s, bool(val.variableMultisampleRate)},
 									LabelValuePair{"Inherited queries"s, bool(val.inheritedQueries)});
+}
+inline auto getFormatString(vk::QueueFamilyProperties const& val)
+{
+	return getLabelValuePairsString(LabelValuePair{"Queue type"s, val.queueFlags},
+									LabelValuePair{"Queue count"s, val.queueCount},
+									LabelValuePair{"Timestamp valid bits"s, val.timestampValidBits},
+									LabelValuePair{"Min image transfer granularity"s, val.minImageTransferGranularity});
 }
 inline auto getFormatString(vk::SurfaceCapabilitiesKHR const& val)
 {

@@ -107,6 +107,31 @@ auto getInstanceExtensions()
 	return requiredInstanceExtensions;
 }
 
+auto getQueueFamilyIndices(vk::PhysicalDevice const& physicalDevice, vk::SurfaceKHR const& surface)
+{
+	QueueFamilyIndices queueFamilyIndices{};
+	auto queueFamilies = physicalDevice.getQueueFamilyProperties();
+	std::cout << getTotalString(queueFamilies, "available"s, getFormatString(queueFamilies)) << queueFamilies;
+
+	bool foundGraphicsQueueFamily = false;
+	bool foundPresentationQueueFamily = false;
+	for (uint64_t i = 0; i < queueFamilies.size() && (!foundGraphicsQueueFamily || !foundPresentationQueueFamily); i++)
+	{
+		if (!foundGraphicsQueueFamily && queueFamilies[i].queueFlags & vk::QueueFlagBits::eGraphics)
+		{
+			queueFamilyIndices.graphicsFamily = uint32_t(i);
+			foundGraphicsQueueFamily = true;
+		}
+		if (!foundPresentationQueueFamily && physicalDevice.getSurfaceSupportKHR(uint32_t(i), surface))
+		{
+			queueFamilyIndices.presentationFamily = uint32_t(i);
+			foundPresentationQueueFamily = true;
+		}
+	}
+
+	return std::pair<bool, QueueFamilyIndices>(foundGraphicsQueueFamily && foundPresentationQueueFamily, queueFamilyIndices);
+}
+
 auto getSwapChainSupportDetails(vk::PhysicalDevice const& physicalDevice, vk::SurfaceKHR const& surface)
 {
 	SwapChainSupportDetails swapChainSupportDetails{};
@@ -148,36 +173,12 @@ auto rateDeviceScore(vk::PhysicalDevice const& physicalDevice, std::vector<char 
 		score = 1;
 	}
 
-	uint64_t requirementMultiplier = 0;
-	QueueFamilyIndices queueFamilyIndices{};
-	auto queueFamilies = physicalDevice.getQueueFamilyProperties();
-	bool foundGraphicsQueueFamily = false;
-	bool foundPresentationQueueFamily = false;
-	for (uint64_t i = 0; i < queueFamilies.size(); i++)
-	{
-		if (!foundGraphicsQueueFamily && queueFamilies[i].queueFlags & vk::QueueFlagBits::eGraphics)
-		{
-			queueFamilyIndices.graphicsFamily = uint32_t(i);
-			foundGraphicsQueueFamily = true;
-		}
-		if (!foundPresentationQueueFamily && physicalDevice.getSurfaceSupportKHR(uint32_t(i), surface))
-		{
-			queueFamilyIndices.presentationFamily = uint32_t(i);
-			foundPresentationQueueFamily = true;
-		}
-		if (foundGraphicsQueueFamily && foundPresentationQueueFamily)
-		{
-			requirementMultiplier = 1;
-			break;
-		}
-	}
-	score *= requirementMultiplier;
-
-	requirementMultiplier = 1;
+	uint64_t requirementMultiplier = 1;
 	auto availablePhysicalDeviceExtensions = physicalDevice.enumerateDeviceExtensionProperties();
 	std::cout << getTotalString(availablePhysicalDeviceExtensions, "available"s, getFormatString<vk::PhysicalDevice>(availablePhysicalDeviceExtensions)) <<
 		availablePhysicalDeviceExtensions;
 
+	SwapChainSupportDetails swapChainSupportDetails{};
 	std::cout << getTotalString(requiredPhysicalDeviceExtensions, "required"s, getFormatString<vk::PhysicalDevice, vk::ExtensionProperties>(requiredPhysicalDeviceExtensions));
 	if (!checkAndPrintRequired(availablePhysicalDeviceExtensions, requiredPhysicalDeviceExtensions))
 	{
@@ -185,13 +186,17 @@ auto rateDeviceScore(vk::PhysicalDevice const& physicalDevice, std::vector<char 
 	}
 	else
 	{
-		auto swapChainSupportDetails = getSwapChainSupportDetails(physicalDevice, surface);
-		//if (swapChainSupportDetails.formats.empty() || swapChainSupportDetails.presentModes.empty()) requirementMultiplier = 0;
+		swapChainSupportDetails = getSwapChainSupportDetails(physicalDevice, surface);
+		if (swapChainSupportDetails.formats.empty() || swapChainSupportDetails.presentModes.empty()) requirementMultiplier = 0;
 	}
-
 	score *= requirementMultiplier;
 
-	return std::pair<uint64_t, QueueFamilyIndices>(score * multiplier, queueFamilyIndices);
+	requirementMultiplier = 0;
+	auto [result, queueFamilyIndices] = getQueueFamilyIndices(physicalDevice, surface);
+	requirementMultiplier = result ? 1 : 0;
+	score *= requirementMultiplier;
+
+	return std::tuple<uint64_t, QueueFamilyIndices, SwapChainSupportDetails>(score * multiplier, queueFamilyIndices, swapChainSupportDetails);
 }
 
 auto choosePhysicalDevice(vk::Instance const& instance, std::vector<char const*> const& requiredPhysicalDeviceExtensions, vk::SurfaceKHR const& surface)
@@ -210,7 +215,9 @@ auto choosePhysicalDevice(vk::Instance const& instance, std::vector<char const*>
 		std::cout << getFormatString(physicalDeviceProperties) << ",\t"s << getFormatString(physicalDeviceFeatures) << "\n"s;
 		uint64_t currentPhysicalDeviceScore{};
 		QueueFamilyIndices currentPhysicalDeviceQueueIndices{};
-		std::tie(currentPhysicalDeviceScore, currentPhysicalDeviceQueueIndices) = rateDeviceScore(currentPhysicalDevice, requiredPhysicalDeviceExtensions, surface);
+		SwapChainSupportDetails currentSwapChainSupportDetails{};
+		std::tie(currentPhysicalDeviceScore, currentPhysicalDeviceQueueIndices, currentSwapChainSupportDetails) = rateDeviceScore(currentPhysicalDevice,
+																														   requiredPhysicalDeviceExtensions, surface);
 		std::cout << getLabelValuePairsString(LabelValuePair{"Device suitability score"s, currentPhysicalDeviceScore},
 											  LabelValuePair{"Suitable queue family indices"s, currentPhysicalDeviceQueueIndices}) << "\n"s;
 		if (currentPhysicalDeviceScore > maxPhysicalDeviceScore)
@@ -315,4 +322,9 @@ vk::UniqueDevice VulkanResources::createDevice(std::vector<char const*> const& v
 	vk::PhysicalDeviceFeatures physicalDeviceFeatures{};
 	vk::DeviceCreateInfo deviceCreateInfo({}, deviceQueueCreateInfos, validationLayers, requiredPhysicalDeviceExtensions, &physicalDeviceFeatures);
 	return physicalDevice.createDeviceUnique(deviceCreateInfo);
+}
+
+vk::UniqueSwapchainKHR VulkanResources::createSwapchain()
+{
+	return vk::UniqueSwapchainKHR();
 }

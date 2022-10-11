@@ -28,11 +28,13 @@ private:
 	vk::UniqueDevice device;
 	vk::Queue graphicsQueue;
 	vk::Queue presentationQueue;
+	vk::UniqueSwapchainKHR swapchain;
 
 	vk::UniqueInstance createInstance(std::vector<char const*> const& validationLayers, std::vector<char const*> const& instanceExtensions,
 									  vk::DebugUtilsMessengerCreateInfoEXT* debugUtilsMessengerCreateInfo);
 	vk::UniqueDebugUtilsMessengerEXT createDebugUtilsMessenger(vk::DebugUtilsMessengerCreateInfoEXT const& debugUtilsMessengerCreateInfo);
 	vk::UniqueSurfaceKHR createSurface();
 	vk::UniqueDevice createDevice(std::vector<char const*> const& validationLayers, std::vector<char const*> const& requiredPhysicalDeviceExtensions);
+	vk::UniqueSwapchainKHR createSwapchain();
 };
 
