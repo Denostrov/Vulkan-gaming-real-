@@ -207,6 +207,7 @@ auto choosePhysicalDevice(vk::Instance const& instance, std::vector<char const*>
 	uint64_t maxPhysicalDeviceScore = 0;
 	vk::PhysicalDevice bestPhysicalDevice{};
 	QueueFamilyIndices bestPhysicalDeviceQueueIndices{};
+	SwapChainSupportDetails bestSwapChainSupportDetails{};
 	std::cout << getTotalString(physicalDevices, "available"s);
 	for (auto const& currentPhysicalDevice : physicalDevices)
 	{
@@ -224,13 +225,65 @@ auto choosePhysicalDevice(vk::Instance const& instance, std::vector<char const*>
 		{
 			bestPhysicalDevice = currentPhysicalDevice;
 			bestPhysicalDeviceQueueIndices = currentPhysicalDeviceQueueIndices;
+			bestSwapChainSupportDetails = currentSwapChainSupportDetails;
 			maxPhysicalDeviceScore = std::max(maxPhysicalDeviceScore, currentPhysicalDeviceScore);
 		}
 	}
 	assert(maxPhysicalDeviceScore > 0 && "No suitable physical devices found");
 	formatPrint(std::cout, "Picked {} as best physical device with {} score and {} queue family indices\n"sv,
 				bestPhysicalDevice.getProperties().deviceName.data(), maxPhysicalDeviceScore, toString(bestPhysicalDeviceQueueIndices));
-	return std::pair<vk::PhysicalDevice, QueueFamilyIndices>(bestPhysicalDevice, bestPhysicalDeviceQueueIndices);
+	return std::tuple<vk::PhysicalDevice, QueueFamilyIndices, SwapChainSupportDetails>(bestPhysicalDevice, bestPhysicalDeviceQueueIndices, bestSwapChainSupportDetails);
+}
+
+auto chooseSwapSurfaceFormat(std::vector<vk::SurfaceFormatKHR> const& surfaceFormats)
+{
+	vk::SurfaceFormatKHR chosenFormat{};
+	for (auto const& format : surfaceFormats)
+	{
+		if (format.format == vk::Format::eB8G8R8A8Srgb && format.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear)
+		{
+			chosenFormat = format;
+			break;
+		}
+	}
+	chosenFormat = surfaceFormats[0];
+	formatPrint(std::cout, "Picked swap surface format: {}\n"sv, getFormatString(chosenFormat));
+	return chosenFormat;
+}
+
+auto chooseSwapPresentMode(std::vector<vk::PresentModeKHR> const& presentModes)
+{
+	vk::PresentModeKHR chosenPresentMode{};
+	for (auto const& mode : presentModes)
+	{
+		if (mode == vk::PresentModeKHR::eMailbox)
+		{
+			chosenPresentMode = mode;
+			break;
+		}
+	}
+	chosenPresentMode = vk::PresentModeKHR::eFifo;
+	formatPrint(std::cout, "Picked swap present mode: {}\n"sv, getFormatString(chosenPresentMode));
+	return chosenPresentMode;
+}
+
+auto chooseSwapExtent(GLFWwindow* window, vk::SurfaceCapabilitiesKHR const& capabilities)
+{
+	vk::Extent2D chosenExtent{};
+	if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
+	{
+		chosenExtent = capabilities.currentExtent;
+	}
+	else
+	{
+		int width{}, height{};
+		glfwGetFramebufferSize(window, &width, &height);
+		chosenExtent = vk::Extent2D{static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
+		chosenExtent.width = std::clamp(chosenExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+		chosenExtent.height = std::clamp(chosenExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+	}
+	formatPrint(std::cout, "Picked swap extent: {}\n"sv, toString(chosenExtent));
+	return chosenExtent;
 }
 
 VulkanResources::VulkanResources()
@@ -264,7 +317,8 @@ VulkanResources::VulkanResources()
 	assert(surface && "couldn't create surface");
 	formatPrint(std::cout, "Created a window surface\n"sv);
 
-	std::tie(physicalDevice, queueFamilyIndices) = choosePhysicalDevice(instance.get(), requiredPhysicalDeviceExtensions, surface.get());
+	SwapChainSupportDetails swapChainSupportDetails;
+	std::tie(physicalDevice, queueFamilyIndices, swapChainSupportDetails) = choosePhysicalDevice(instance.get(), requiredPhysicalDeviceExtensions, surface.get());
 
 	device = createDevice(validationLayers, requiredPhysicalDeviceExtensions);
 	assert(device && "couldn't create logical device");
@@ -276,7 +330,8 @@ VulkanResources::VulkanResources()
 	presentationQueue = device.get().getQueue(queueFamilyIndices.presentationFamily, 0);
 	formatPrint(std::cout, "Acquired presentation queue\n"sv);
 
-
+	swapchain = createSwapchain(swapChainSupportDetails);
+	formatPrint(std::cout, "Created swap chain\n"sv);
 }
 
 VulkanResources::~VulkanResources()
@@ -335,7 +390,33 @@ vk::UniqueDevice VulkanResources::createDevice(std::vector<char const*> const& v
 	return physicalDevice.createDeviceUnique(deviceCreateInfo);
 }
 
-vk::UniqueSwapchainKHR VulkanResources::createSwapchain()
+vk::UniqueSwapchainKHR VulkanResources::createSwapchain(SwapChainSupportDetails const& swapChainSupportDetails)
 {
-	return vk::UniqueSwapchainKHR();
+	auto surfaceFormat = chooseSwapSurfaceFormat(swapChainSupportDetails.formats);
+	auto presentMode = chooseSwapPresentMode(swapChainSupportDetails.presentModes);
+	auto extent = chooseSwapExtent(renderWindow, swapChainSupportDetails.capabilities);
+
+	uint32_t imageCount = swapChainSupportDetails.capabilities.minImageCount + 1;
+	if (swapChainSupportDetails.capabilities.maxImageCount > 0 && imageCount > swapChainSupportDetails.capabilities.maxImageCount)
+	{
+		imageCount = swapChainSupportDetails.capabilities.maxImageCount;
+	}
+
+	vk::SharingMode imageSharingMode{};
+	std::vector<uint32_t> queueIndices{};
+	if (queueFamilyIndices.graphicsFamily != queueFamilyIndices.presentationFamily)
+	{
+		imageSharingMode = vk::SharingMode::eConcurrent;
+		queueIndices = {queueFamilyIndices.graphicsFamily, queueFamilyIndices.presentationFamily};
+	}
+	else
+	{
+		imageSharingMode = vk::SharingMode::eExclusive;
+	}
+
+	vk::SwapchainCreateInfoKHR createInfo{{}, surface.get(), imageCount, surfaceFormat.format, surfaceFormat.colorSpace, extent, 1,
+		vk::ImageUsageFlagBits::eColorAttachment, imageSharingMode, queueIndices, swapChainSupportDetails.capabilities.currentTransform,
+		vk::CompositeAlphaFlagBitsKHR::eOpaque, presentMode, vk::Bool32(true)};
+
+	return device->createSwapchainKHRUnique(createInfo);
 }

@@ -35,6 +35,6 @@ private:
 	vk::UniqueDebugUtilsMessengerEXT createDebugUtilsMessenger(vk::DebugUtilsMessengerCreateInfoEXT const& debugUtilsMessengerCreateInfo);
 	vk::UniqueSurfaceKHR createSurface();
 	vk::UniqueDevice createDevice(std::vector<char const*> const& validationLayers, std::vector<char const*> const& requiredPhysicalDeviceExtensions);
-	vk::UniqueSwapchainKHR createSwapchain();
+	vk::UniqueSwapchainKHR createSwapchain(SwapChainSupportDetails const& swapChainSupportDetails);
 };
 
