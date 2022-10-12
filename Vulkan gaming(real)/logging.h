@@ -44,11 +44,21 @@ inline VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityF
 
 	if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
 	{
-		printMessage(errorLog);
+		if (errorLog)
+		{
+			printMessage(errorLog);
+		}
+		else
+		{
+			printMessage(std::cout);
+		}
 	}
 	else
 	{
-		printMessage(debugLog);
+		if (debugLog)
+		{
+			printMessage(debugLog);
+		}
 	}
 
 	return VK_FALSE;

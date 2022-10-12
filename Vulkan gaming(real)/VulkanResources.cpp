@@ -331,6 +331,7 @@ VulkanResources::VulkanResources()
 	formatPrint(std::cout, "Acquired presentation queue\n"sv);
 
 	swapchain = createSwapchain(swapChainSupportDetails);
+	assert(swapchain && "couldn't create swapchain");
 	formatPrint(std::cout, "Created swap chain\n"sv);
 }
 
