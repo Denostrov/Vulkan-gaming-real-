@@ -994,6 +994,11 @@ inline std::string toString<vk::QueueFamilyProperties>()
 {
 	return "Queue family"s;
 }
+template<>
+inline std::string toString<vk::Image>()
+{
+	return "Image"s;
+}
 template<class T, class V>
 inline std::string toString() {}
 template<>

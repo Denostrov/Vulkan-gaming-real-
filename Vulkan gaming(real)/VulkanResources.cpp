@@ -330,9 +330,10 @@ VulkanResources::VulkanResources()
 	presentationQueue = device.get().getQueue(queueFamilyIndices.presentationFamily, 0);
 	formatPrint(std::cout, "Acquired presentation queue\n"sv);
 
-	swapchain = createSwapchain(swapChainSupportDetails);
-	assert(swapchain && "couldn't create swapchain");
+	std::tie(swapchain, swapchainImages, swapChainImageFormat, swapChainExtent) = createSwapchain(swapChainSupportDetails);
 	formatPrint(std::cout, "Created swap chain\n"sv);
+	formatPrint(std::cout, "{} swapchain images acquired"sv, swapchainImages.size());
+
 }
 
 VulkanResources::~VulkanResources()
@@ -391,7 +392,7 @@ vk::UniqueDevice VulkanResources::createDevice(std::vector<char const*> const& v
 	return physicalDevice.createDeviceUnique(deviceCreateInfo);
 }
 
-vk::UniqueSwapchainKHR VulkanResources::createSwapchain(SwapChainSupportDetails const& swapChainSupportDetails)
+std::tuple<vk::UniqueSwapchainKHR, std::vector<vk::Image>, vk::Format, vk::Extent2D> VulkanResources::createSwapchain(SwapChainSupportDetails const& swapChainSupportDetails)
 {
 	auto surfaceFormat = chooseSwapSurfaceFormat(swapChainSupportDetails.formats);
 	auto presentMode = chooseSwapPresentMode(swapChainSupportDetails.presentModes);
@@ -419,5 +420,8 @@ vk::UniqueSwapchainKHR VulkanResources::createSwapchain(SwapChainSupportDetails 
 		vk::ImageUsageFlagBits::eColorAttachment, imageSharingMode, queueIndices, swapChainSupportDetails.capabilities.currentTransform,
 		vk::CompositeAlphaFlagBitsKHR::eOpaque, presentMode, vk::Bool32(true)};
 
-	return device->createSwapchainKHRUnique(createInfo);
+	auto newSwapchain = device->createSwapchainKHRUnique(createInfo);
+	assert(newSwapchain && "couldn't create swapchain");
+	auto newSwapChainImages = device->getSwapchainImagesKHR(newSwapchain.get());
+	return {std::move(newSwapchain), newSwapChainImages, surfaceFormat.format, extent};
 }

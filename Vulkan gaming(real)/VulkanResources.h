@@ -29,12 +29,15 @@ private:
 	vk::Queue graphicsQueue;
 	vk::Queue presentationQueue;
 	vk::UniqueSwapchainKHR swapchain;
+	std::vector<vk::Image> swapchainImages;
+	vk::Format swapChainImageFormat;
+	vk::Extent2D swapChainExtent;
 
 	vk::UniqueInstance createInstance(std::vector<char const*> const& validationLayers, std::vector<char const*> const& instanceExtensions,
 									  vk::DebugUtilsMessengerCreateInfoEXT* debugUtilsMessengerCreateInfo);
 	vk::UniqueDebugUtilsMessengerEXT createDebugUtilsMessenger(vk::DebugUtilsMessengerCreateInfoEXT const& debugUtilsMessengerCreateInfo);
 	vk::UniqueSurfaceKHR createSurface();
 	vk::UniqueDevice createDevice(std::vector<char const*> const& validationLayers, std::vector<char const*> const& requiredPhysicalDeviceExtensions);
-	vk::UniqueSwapchainKHR createSwapchain(SwapChainSupportDetails const& swapChainSupportDetails);
+	std::tuple<vk::UniqueSwapchainKHR, std::vector<vk::Image>, vk::Format, vk::Extent2D> createSwapchain(SwapChainSupportDetails const& swapChainSupportDetails);
 };
 
