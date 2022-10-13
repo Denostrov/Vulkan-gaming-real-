@@ -30,8 +30,9 @@ private:
 	vk::Queue presentationQueue;
 	vk::UniqueSwapchainKHR swapchain;
 	std::vector<vk::Image> swapchainImages;
-	vk::Format swapChainImageFormat;
-	vk::Extent2D swapChainExtent;
+	vk::Format swapchainImageFormat;
+	vk::Extent2D swapchainExtent;
+	std::vector<vk::UniqueImageView> swapchainImageViews;
 
 	vk::UniqueInstance createInstance(std::vector<char const*> const& validationLayers, std::vector<char const*> const& instanceExtensions,
 									  vk::DebugUtilsMessengerCreateInfoEXT* debugUtilsMessengerCreateInfo);
@@ -39,5 +40,6 @@ private:
 	vk::UniqueSurfaceKHR createSurface();
 	vk::UniqueDevice createDevice(std::vector<char const*> const& validationLayers, std::vector<char const*> const& requiredPhysicalDeviceExtensions);
 	std::tuple<vk::UniqueSwapchainKHR, std::vector<vk::Image>, vk::Format, vk::Extent2D> createSwapchain(SwapChainSupportDetails const& swapChainSupportDetails);
+	std::vector<vk::UniqueImageView> createSwapchainImageViews();
 };
 

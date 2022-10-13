@@ -325,15 +325,16 @@ VulkanResources::VulkanResources()
 	VULKAN_HPP_DEFAULT_DISPATCHER.init(device.get());
 	formatPrint(std::cout, "Created logical device\n"sv);
 
-	graphicsQueue = device.get().getQueue(queueFamilyIndices.graphicsFamily, 0);
+	graphicsQueue = device->getQueue(queueFamilyIndices.graphicsFamily, 0);
 	formatPrint(std::cout, "Acquired graphics queue\n"sv);
-	presentationQueue = device.get().getQueue(queueFamilyIndices.presentationFamily, 0);
+	presentationQueue = device->getQueue(queueFamilyIndices.presentationFamily, 0);
 	formatPrint(std::cout, "Acquired presentation queue\n"sv);
 
-	std::tie(swapchain, swapchainImages, swapChainImageFormat, swapChainExtent) = createSwapchain(swapChainSupportDetails);
+	std::tie(swapchain, swapchainImages, swapchainImageFormat, swapchainExtent) = createSwapchain(swapChainSupportDetails);
 	formatPrint(std::cout, "Created swap chain\n"sv);
 	formatPrint(std::cout, "{} swapchain images acquired"sv, swapchainImages.size());
 
+	swapchainImageViews = createSwapchainImageViews();
 }
 
 VulkanResources::~VulkanResources()
@@ -423,5 +424,22 @@ std::tuple<vk::UniqueSwapchainKHR, std::vector<vk::Image>, vk::Format, vk::Exten
 	auto newSwapchain = device->createSwapchainKHRUnique(createInfo);
 	assert(newSwapchain && "couldn't create swapchain");
 	auto newSwapChainImages = device->getSwapchainImagesKHR(newSwapchain.get());
+	assert(!newSwapChainImages.empty() && "couldn't get swapchain images");
 	return {std::move(newSwapchain), newSwapChainImages, surfaceFormat.format, extent};
+}
+
+std::vector<vk::UniqueImageView> VulkanResources::createSwapchainImageViews()
+{
+	std::vector<vk::UniqueImageView> result{};
+	for (auto const& image : swapchainImages)
+	{
+		vk::ImageSubresourceRange subresourceRange{vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1};
+		vk::ImageViewCreateInfo imageViewCreateInfo({}, image, vk::ImageViewType::e2D, swapchainImageFormat,
+													{vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity,vk::ComponentSwizzle::eIdentity,vk::ComponentSwizzle::eIdentity},
+													subresourceRange);
+		result.push_back(device->createImageViewUnique(imageViewCreateInfo));
+		assert(result[result.size() - 1] && "couldn't create swapchain image view");
+	}
+
+	return result;
 }
