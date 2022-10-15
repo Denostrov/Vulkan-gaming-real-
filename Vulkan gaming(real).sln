@@ -5,6 +5,8 @@ VisualStudioVersion = 17.3.32922.545
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Vulkan gaming(real)", "Vulkan gaming(real)\Vulkan gaming(real).vcxproj", "{1AFE8000-4988-4EB3-958D-AAE852E638C1}"
 EndProject
+Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "Vulkan Setup", "Vulkan Setup\Vulkan Setup.vdproj", "{DD5661CF-7DC5-4A97-8315-68780961DEE7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -21,6 +23,11 @@ Global
 		{1AFE8000-4988-4EB3-958D-AAE852E638C1}.Release|x64.Build.0 = Release|x64
 		{1AFE8000-4988-4EB3-958D-AAE852E638C1}.Release|x86.ActiveCfg = Release|Win32
 		{1AFE8000-4988-4EB3-958D-AAE852E638C1}.Release|x86.Build.0 = Release|Win32
+		{DD5661CF-7DC5-4A97-8315-68780961DEE7}.Debug|x64.ActiveCfg = Debug
+		{DD5661CF-7DC5-4A97-8315-68780961DEE7}.Debug|x64.Build.0 = Debug
+		{DD5661CF-7DC5-4A97-8315-68780961DEE7}.Debug|x86.ActiveCfg = Debug
+		{DD5661CF-7DC5-4A97-8315-68780961DEE7}.Release|x64.ActiveCfg = Release
+		{DD5661CF-7DC5-4A97-8315-68780961DEE7}.Release|x86.ActiveCfg = Release
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

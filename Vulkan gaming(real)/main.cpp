@@ -9,6 +9,10 @@ int main()
 	if (!debugLog || !errorLog)
 	{
 		std::cout << "Couldn't create log files. Possibly permissions denied? Try running as administrator\n";
+		while (true)
+		{
+
+		}
 		return 740;
 	}
 
