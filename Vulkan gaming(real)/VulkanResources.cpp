@@ -195,7 +195,7 @@ auto rateDeviceScore(vk::PhysicalDevice const& physicalDevice, std::vector<char 
 	requirementMultiplier = result ? 1 : 0;
 	score *= requirementMultiplier;
 
-	return std::tuple<uint64_t, QueueFamilyIndices, SwapChainSupportDetails>(score * multiplier, queueFamilyIndices, swapChainSupportDetails);
+	return std::make_tuple(score * multiplier, queueFamilyIndices, swapChainSupportDetails);
 }
 
 auto choosePhysicalDevice(vk::Instance const& instance, std::vector<char const*> const& requiredPhysicalDeviceExtensions, vk::SurfaceKHR const& surface)
@@ -231,7 +231,7 @@ auto choosePhysicalDevice(vk::Instance const& instance, std::vector<char const*>
 	assert(maxPhysicalDeviceScore > 0 && "No suitable physical devices found");
 	formatPrint(std::cout, "Picked {} as best physical device with {} score and {} queue family indices\n"sv,
 				bestPhysicalDevice.getProperties().deviceName.data(), maxPhysicalDeviceScore, toString(bestPhysicalDeviceQueueIndices));
-	return std::tuple<vk::PhysicalDevice, QueueFamilyIndices, SwapChainSupportDetails>(bestPhysicalDevice, bestPhysicalDeviceQueueIndices, bestSwapChainSupportDetails);
+	return std::make_tuple(bestPhysicalDevice, bestPhysicalDeviceQueueIndices, bestSwapChainSupportDetails);
 }
 
 auto chooseSwapSurfaceFormat(std::vector<vk::SurfaceFormatKHR> const& surfaceFormats)
@@ -364,8 +364,7 @@ auto createSwapchain(vk::Device device, vk::SurfaceKHR surface, GLFWwindow* wind
 	auto newSwapchain = device.createSwapchainKHRUnique(createInfo);
 	auto newSwapChainImages = device.getSwapchainImagesKHR(newSwapchain.get());
 	assert(!newSwapChainImages.empty() && "couldn't get swapchain images");
-	return std::tuple<vk::UniqueSwapchainKHR, std::vector<vk::Image>, vk::Format, vk::Extent2D>{std::move(newSwapchain),
-		newSwapChainImages, surfaceFormat.format, extent};
+	return std::make_tuple(std::move(newSwapchain), newSwapChainImages, surfaceFormat.format, extent);
 }
 
 auto createSwapchainImageViews(vk::Device device, std::vector<vk::Image> const& swapchainImages, vk::Format swapchainImageFormat)
@@ -390,16 +389,28 @@ auto createShaderModule(vk::Device device, std::vector<char> const& shaderCode)
 	return device.createShaderModuleUnique(shaderModuleCreateInfo);
 }
 
-auto createGraphicsPipeline(vk::Device device, vk::Extent2D const& swapchainExtent)
+auto createRenderPass(vk::Device device, vk::Format swapchainImageFormat)
+{
+	vk::AttachmentDescription colorAttachment{{}, swapchainImageFormat, vk::SampleCountFlagBits::e1, vk::AttachmentLoadOp::eClear, vk::AttachmentStoreOp::eStore,
+	vk::AttachmentLoadOp::eDontCare, vk::AttachmentStoreOp::eDontCare, vk::ImageLayout::eUndefined, vk::ImageLayout::ePresentSrcKHR};
+
+	vk::AttachmentReference colorAttachmentRef{0, vk::ImageLayout::eColorAttachmentOptimal};
+	vk::SubpassDescription subpass{{}, vk::PipelineBindPoint::eGraphics, nullptr, colorAttachmentRef};
+
+	vk::RenderPassCreateInfo renderPassCreateInfo{{}, colorAttachment, subpass};
+	return device.createRenderPassUnique(renderPassCreateInfo);
+}
+
+auto createGraphicsPipeline(vk::Device device, vk::Extent2D const& swapchainExtent, vk::RenderPass renderPass)
 {
 	auto vertexShaderCode = readFile("shaders/vertex.spv");
 	auto fragmentShaderCode = readFile("shaders/fragment.spv");
 	assert(!vertexShaderCode.empty() && !fragmentShaderCode.empty() && "couldn't read shader files");
 
 	vk::UniqueShaderModule vertexShaderModule = createShaderModule(device, vertexShaderCode);
-	formatPrint(std::cout, "Created vertex shader module"sv);
+	formatPrint(std::cout, "Created vertex shader module\n"sv);
 	vk::UniqueShaderModule fragmentShaderModule = createShaderModule(device, fragmentShaderCode);
-	formatPrint(std::cout, "Created fragment shader module"sv);
+	formatPrint(std::cout, "Created fragment shader module\n"sv);
 
 	vk::PipelineShaderStageCreateInfo vertexShaderStageCreateInfo{{}, vk::ShaderStageFlagBits::eVertex, vertexShaderModule.get(), "main"};
 	vk::PipelineShaderStageCreateInfo fragmentShaderStageCreateInfo{{}, vk::ShaderStageFlagBits::eFragment, fragmentShaderModule.get(), "main"};
@@ -434,6 +445,13 @@ auto createGraphicsPipeline(vk::Device device, vk::Extent2D const& swapchainExte
 
 	vk::PipelineLayoutCreateInfo layoutCreateInfo{{}, nullptr, nullptr};
 	auto pipelineLayout = device.createPipelineLayoutUnique(layoutCreateInfo);
+
+	vk::GraphicsPipelineCreateInfo pipelineCreateInfo{{}, shaderStages, &vertexInputStateCreateInfo, &inputAssemblyStateCreateInfo, nullptr,
+		&viewportStateCreateInfo, &rasterizationStateCreateInfo, &multisampleStateCreateInfo, nullptr, &colorBlendStateCreateInfo, &dynamicStateCreateInfo,
+		pipelineLayout.get(), renderPass, 0};
+	auto [result, pipeline] = device.createGraphicsPipelineUnique(nullptr, pipelineCreateInfo);
+	assert(result == vk::Result::eSuccess && "couldn't create graphics pipeline");
+	return std::make_tuple(std::move(pipelineLayout), std::move(pipeline));
 }
 
 VulkanResources::VulkanResources()
@@ -464,8 +482,8 @@ VulkanResources::VulkanResources()
 	surface = createSurface(instance.get(), renderWindow);
 	formatPrint(std::cout, "Created a window surface\n"sv);
 
-	SwapChainSupportDetails swapChainSupportDetails;
-	std::tie(physicalDevice, queueFamilyIndices, swapChainSupportDetails) = choosePhysicalDevice(instance.get(), requiredPhysicalDeviceExtensions, surface.get());
+	SwapChainSupportDetails swapchainSupportDetails;
+	std::tie(physicalDevice, queueFamilyIndices, swapchainSupportDetails) = choosePhysicalDevice(instance.get(), requiredPhysicalDeviceExtensions, surface.get());
 
 	device = createDevice(physicalDevice, queueFamilyIndices, validationLayers, requiredPhysicalDeviceExtensions);
 	VULKAN_HPP_DEFAULT_DISPATCHER.init(device.get());
@@ -477,11 +495,18 @@ VulkanResources::VulkanResources()
 	formatPrint(std::cout, "Acquired presentation queue\n"sv);
 
 	std::tie(swapchain, swapchainImages, swapchainImageFormat, swapchainExtent) = createSwapchain(device.get(), surface.get(), renderWindow, queueFamilyIndices,
-																								  swapChainSupportDetails);
-	formatPrint(std::cout, "Created swap chain\n"sv);
-	formatPrint(std::cout, "{} swapchain images acquired"sv, swapchainImages.size());
+																								  swapchainSupportDetails);
+	formatPrint(std::cout, "Created swapchain\n"sv);
+	formatPrint(std::cout, "{} swapchain images acquired\n"sv, swapchainImages.size());
 
 	swapchainImageViews = createSwapchainImageViews(device.get(), swapchainImages, swapchainImageFormat);
+	formatPrint(std::cout, "Created {} swapchain image views\n"sv, swapchainImageViews.size());
+
+	renderPass = createRenderPass(device.get(), swapchainImageFormat);
+	formatPrint(std::cout, "Created renderpass\n"sv);
+
+	std::tie(pipelineLayout, graphicsPipeline) = createGraphicsPipeline(device.get(), swapchainExtent, renderPass.get());
+	formatPrint(std::cout, "Created graphics pipeline\n"sv);
 }
 
 VulkanResources::~VulkanResources()

@@ -33,6 +33,8 @@ private:
 	vk::Format swapchainImageFormat;
 	vk::Extent2D swapchainExtent;
 	std::vector<vk::UniqueImageView> swapchainImageViews;
+	vk::UniqueRenderPass renderPass;
 	vk::UniquePipelineLayout pipelineLayout;
+	vk::UniquePipeline graphicsPipeline;
 };
 
