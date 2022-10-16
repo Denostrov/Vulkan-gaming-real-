@@ -476,10 +476,10 @@ auto createCommandPool(vk::Device device, QueueFamilyIndices const& queueFamilyI
 	return device.createCommandPoolUnique(commandPoolCreateInfo);
 }
 
-auto createCommandBuffer(vk::Device device, vk::CommandPool commandPool)
+auto createCommandBuffers(vk::Device device, vk::CommandPool commandPool)
 {
-	vk::CommandBufferAllocateInfo commandBufferAllocateInfo{commandPool, vk::CommandBufferLevel::ePrimary, 1};
-	return device.allocateCommandBuffers(commandBufferAllocateInfo)[0];
+	vk::CommandBufferAllocateInfo commandBufferAllocateInfo{commandPool, vk::CommandBufferLevel::ePrimary, MAX_FRAMES_IN_FLIGHT};
+	return device.allocateCommandBuffers(commandBufferAllocateInfo);
 }
 
 auto recordCommandBuffer(vk::CommandBuffer commandBuffer, vk::Pipeline graphicsPipeline, vk::RenderPass renderPass, vk::Framebuffer swapchainFrameBuffer,
@@ -513,8 +513,16 @@ auto createSyncObjects(vk::Device device)
 	vk::SemaphoreCreateInfo semaphoreCreateInfo{{}, nullptr};
 	vk::FenceCreateInfo fenceCreateInfo{vk::FenceCreateFlagBits::eSignaled, nullptr};
 
-	return std::make_tuple(device.createSemaphoreUnique(semaphoreCreateInfo), device.createSemaphoreUnique(semaphoreCreateInfo),
-						   device.createFenceUnique(fenceCreateInfo));
+	std::vector<vk::UniqueSemaphore> imageAvailableSemaphores;
+	std::vector<vk::UniqueSemaphore> renderFinishedSemaphores;
+	std::vector<vk::UniqueFence> inFlightFences;
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+	{
+		imageAvailableSemaphores.push_back(device.createSemaphoreUnique(semaphoreCreateInfo));
+		renderFinishedSemaphores.push_back(device.createSemaphoreUnique(semaphoreCreateInfo));
+		inFlightFences.push_back(device.createFenceUnique(fenceCreateInfo));
+	}
+	return std::make_tuple(std::move(imageAvailableSemaphores), std::move(renderFinishedSemaphores), std::move(inFlightFences));
 }
 
 VulkanResources::VulkanResources()
@@ -577,10 +585,10 @@ VulkanResources::VulkanResources()
 	commandPool = createCommandPool(device.get(), queueFamilyIndices);
 	formatPrint(std::cout, "Created command pool\n"sv);
 
-	commandBuffer = createCommandBuffer(device.get(), commandPool.get());
+	commandBuffers = createCommandBuffers(device.get(), commandPool.get());
 	formatPrint(std::cout, "Allocated command buffer\n"sv);
 
-	std::tie(imageAvailableSemaphore, renderFinishedSemaphore, inFlightFence) = createSyncObjects(device.get());
+	std::tie(imageAvailableSemaphores, renderFinishedSemaphores, inFlightFences) = createSyncObjects(device.get());
 	formatPrint(std::cout, "Created synchronization resources\n"sv);
 }
 
@@ -596,25 +604,27 @@ bool VulkanResources::windowCloseStatus()
 
 void VulkanResources::drawFrame()
 {
-	auto waitResult = device->waitForFences(inFlightFence.get(), VK_TRUE, std::numeric_limits<uint64_t>::max());
-	device->resetFences(inFlightFence.get());
+	auto waitResult = device->waitForFences(inFlightFences[currentFrame].get(), VK_TRUE, std::numeric_limits<uint64_t>::max());
+	device->resetFences(inFlightFences[currentFrame].get());
 
-	auto [acquireResult, imageIndex] = device->acquireNextImageKHR(swapchain.get(), std::numeric_limits<uint64_t>::max(), imageAvailableSemaphore.get());
+	auto [acquireResult, imageIndex] = device->acquireNextImageKHR(swapchain.get(), std::numeric_limits<uint64_t>::max(), imageAvailableSemaphores[currentFrame].get());
 
-	commandBuffer.reset();
+	commandBuffers[currentFrame].reset();
 
-	recordCommandBuffer(commandBuffer, graphicsPipeline.get(), renderPass.get(), swapchainFramebuffers[imageIndex].get(), swapchainExtent);
+	recordCommandBuffer(commandBuffers[currentFrame], graphicsPipeline.get(), renderPass.get(), swapchainFramebuffers[imageIndex].get(), swapchainExtent);
 
-	std::array waitSemaphores{imageAvailableSemaphore.get()};
+	std::array waitSemaphores{imageAvailableSemaphores[currentFrame].get()};
 	std::array waitStages{vk::PipelineStageFlags{vk::PipelineStageFlagBits::eColorAttachmentOutput}};
-	std::array signalSemaphores{renderFinishedSemaphore.get()};
-	vk::SubmitInfo submitInfo{waitSemaphores, waitStages, commandBuffer, signalSemaphores};
+	std::array signalSemaphores{renderFinishedSemaphores[currentFrame].get()};
+	vk::SubmitInfo submitInfo{waitSemaphores, waitStages, commandBuffers[currentFrame], signalSemaphores};
 
-	graphicsQueue.submit(submitInfo, inFlightFence.get());
+	graphicsQueue.submit(submitInfo, inFlightFences[currentFrame].get());
 
 	vk::PresentInfoKHR presentInfo{signalSemaphores, swapchain.get(), imageIndex};
 
 	auto presentResult = presentationQueue.presentKHR(presentInfo);
+
+	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
 void VulkanResources::stopRendering()

@@ -40,9 +40,10 @@ private:
 	vk::UniquePipeline graphicsPipeline;
 	std::vector<vk::UniqueFramebuffer> swapchainFramebuffers;
 	vk::UniqueCommandPool commandPool;
-	vk::CommandBuffer commandBuffer;
-	vk::UniqueSemaphore imageAvailableSemaphore;
-	vk::UniqueSemaphore renderFinishedSemaphore;
-	vk::UniqueFence inFlightFence;
+	std::vector<vk::CommandBuffer> commandBuffers;
+	std::vector<vk::UniqueSemaphore> imageAvailableSemaphores;
+	std::vector<vk::UniqueSemaphore> renderFinishedSemaphores;
+	std::vector<vk::UniqueFence> inFlightFences;
+	uint64_t currentFrame{0};
 };
 
