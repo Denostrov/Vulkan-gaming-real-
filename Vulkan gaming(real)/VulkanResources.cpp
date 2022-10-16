@@ -85,7 +85,7 @@ auto getValidationLayers()
 
 		auto requiredLayers = enumerateRequiredFunc<vk::LayerProperties>();
 		std::cout << getTotalString(requiredLayers, "required"s, getFormatString<vk::LayerProperties>(requiredLayers));
-		assert(checkAndPrintRequired(availableLayers, requiredLayers));
+		assert(checkAndPrintRequired(availableLayers, requiredLayers) && "Not all validation layers supported");
 
 		return requiredLayers;
 	}
@@ -102,7 +102,7 @@ auto getInstanceExtensions()
 
 	auto requiredInstanceExtensions = enumerateRequiredFunc<vk::Instance, vk::ExtensionProperties>();
 	std::cout << getTotalString(requiredInstanceExtensions, "required"s, getFormatString<vk::Instance, vk::ExtensionProperties>(requiredInstanceExtensions));
-	checkAndPrintRequired(availableInstanceExtensions, requiredInstanceExtensions);
+	assert(checkAndPrintRequired(availableInstanceExtensions, requiredInstanceExtensions) && "Not all instance extensions available");
 
 	return requiredInstanceExtensions;
 }
@@ -163,10 +163,9 @@ auto rateDeviceScore(vk::PhysicalDevice const& physicalDevice, std::vector<char 
 	score += physicalDeviceProperties.limits.maxImageDimension2D;
 	score += physicalDeviceProperties.limits.maxBoundDescriptorSets;
 	score += physicalDeviceProperties.limits.maxPushConstantsSize;
-	score += physicalDeviceProperties.limits.maxDescriptorSetUniformBuffers;
 	score += physicalDeviceProperties.limits.maxFramebufferHeight;
-	score += physicalDeviceProperties.limits.maxSamplerAllocationCount;
 	score += physicalDeviceProperties.limits.maxImageArrayLayers;
+	score += physicalDeviceProperties.limits.maxVertexInputBindings;
 
 	if (score > std::numeric_limits<uint32_t>::max())
 	{
@@ -218,7 +217,7 @@ auto choosePhysicalDevice(vk::Instance const& instance, std::vector<char const*>
 		QueueFamilyIndices currentPhysicalDeviceQueueIndices{};
 		SwapChainSupportDetails currentSwapChainSupportDetails{};
 		std::tie(currentPhysicalDeviceScore, currentPhysicalDeviceQueueIndices, currentSwapChainSupportDetails) = rateDeviceScore(currentPhysicalDevice,
-																														   requiredPhysicalDeviceExtensions, surface);
+																																  requiredPhysicalDeviceExtensions, surface);
 		std::cout << getLabelValuePairsString(LabelValuePair{"Device suitability score"s, currentPhysicalDeviceScore},
 											  LabelValuePair{"Suitable queue family indices"s, currentPhysicalDeviceQueueIndices}) << "\n"s;
 		if (currentPhysicalDeviceScore > maxPhysicalDeviceScore)
@@ -286,69 +285,8 @@ auto chooseSwapExtent(GLFWwindow* window, vk::SurfaceCapabilitiesKHR const& capa
 	return chosenExtent;
 }
 
-VulkanResources::VulkanResources()
-	:windowContext(),
-	renderWindow(800, 600, windowContext)
-{
-	//load vulkan specific funcs into dispatcher
-	vk::DynamicLoader dynamicLoader;
-	auto vkGetInstanceProcAddr = dynamicLoader.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
-	VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);
-
-	auto validationLayers = getValidationLayers();
-	auto instanceExtensions = getInstanceExtensions();
-	auto debugUtilsMessengerCreateInfo = getDebugUtilsMessengerCreateInfo();
-
-	auto requiredPhysicalDeviceExtensions = enumerateRequiredFunc<vk::PhysicalDevice, vk::ExtensionProperties>();
-
-	instance = createInstance(validationLayers, instanceExtensions, debugUtilsMessengerCreateInfo.get());
-	assert(instance && "couldn't create instance");
-	formatPrint(std::cout, "Created an instance\n"sv);
-	VULKAN_HPP_DEFAULT_DISPATCHER.init(instance.get());
-
-	if (ENABLE_VALIDATION_LAYERS)
-	{
-		debugUtilsMessenger = createDebugUtilsMessenger(*debugUtilsMessengerCreateInfo);
-		assert(debugUtilsMessenger && "couldn't create debug messenger");
-		formatPrint(std::cout, "Created a debug messenger\n"sv);
-	}
-
-	surface = createSurface();
-	assert(surface && "couldn't create surface");
-	formatPrint(std::cout, "Created a window surface\n"sv);
-
-	SwapChainSupportDetails swapChainSupportDetails;
-	std::tie(physicalDevice, queueFamilyIndices, swapChainSupportDetails) = choosePhysicalDevice(instance.get(), requiredPhysicalDeviceExtensions, surface.get());
-
-	device = createDevice(validationLayers, requiredPhysicalDeviceExtensions);
-	assert(device && "couldn't create logical device");
-	VULKAN_HPP_DEFAULT_DISPATCHER.init(device.get());
-	formatPrint(std::cout, "Created logical device\n"sv);
-
-	graphicsQueue = device->getQueue(queueFamilyIndices.graphicsFamily, 0);
-	formatPrint(std::cout, "Acquired graphics queue\n"sv);
-	presentationQueue = device->getQueue(queueFamilyIndices.presentationFamily, 0);
-	formatPrint(std::cout, "Acquired presentation queue\n"sv);
-
-	std::tie(swapchain, swapchainImages, swapchainImageFormat, swapchainExtent) = createSwapchain(swapChainSupportDetails);
-	formatPrint(std::cout, "Created swap chain\n"sv);
-	formatPrint(std::cout, "{} swapchain images acquired"sv, swapchainImages.size());
-
-	swapchainImageViews = createSwapchainImageViews();
-}
-
-VulkanResources::~VulkanResources()
-{
-
-}
-
-bool VulkanResources::windowCloseStatus()
-{
-	return glfwWindowShouldClose(renderWindow);
-}
-
-vk::UniqueInstance VulkanResources::createInstance(std::vector<char const*> const& validationLayers, std::vector<char const*> const& instanceExtensions,
-												   vk::DebugUtilsMessengerCreateInfoEXT* debugUtilsMessengerCreateInfo)
+auto createInstance(std::vector<char const*> const& validationLayers, std::vector<char const*> const& instanceExtensions,
+					vk::DebugUtilsMessengerCreateInfoEXT* debugUtilsMessengerCreateInfo)
 {
 	uint32_t vulkanVersion = 0;
 	if (VULKAN_HPP_DEFAULT_DISPATCHER.vkEnumerateInstanceVersion == nullptr)
@@ -367,19 +305,20 @@ vk::UniqueInstance VulkanResources::createInstance(std::vector<char const*> cons
 	return vk::createInstanceUnique(instanceCreateInfo);
 }
 
-vk::UniqueDebugUtilsMessengerEXT VulkanResources::createDebugUtilsMessenger(vk::DebugUtilsMessengerCreateInfoEXT const& debugUtilsMessengerCreateInfo)
+auto createDebugUtilsMessenger(vk::Instance instance, vk::DebugUtilsMessengerCreateInfoEXT const& debugUtilsMessengerCreateInfo)
 {
-	return instance.get().createDebugUtilsMessengerEXTUnique(debugUtilsMessengerCreateInfo);
+	return instance.createDebugUtilsMessengerEXTUnique(debugUtilsMessengerCreateInfo);
 }
 
-vk::UniqueSurfaceKHR VulkanResources::createSurface()
+auto createSurface(vk::Instance instance, GLFWwindow* window)
 {
 	VkSurfaceKHR windowSurface;
-	glfwCreateWindowSurface(instance.get(), renderWindow, nullptr, &windowSurface);
-	return vk::UniqueSurfaceKHR(vk::SurfaceKHR(windowSurface), instance.get());
+	glfwCreateWindowSurface(instance, window, nullptr, &windowSurface);
+	return vk::UniqueSurfaceKHR(vk::SurfaceKHR(windowSurface), instance);
 }
 
-vk::UniqueDevice VulkanResources::createDevice(std::vector<char const*> const& validationLayers, std::vector<char const*> const& requiredPhysicalDeviceExtensions)
+auto createDevice(vk::PhysicalDevice physicalDevice, QueueFamilyIndices const& queueFamilyIndices, std::vector<char const*> const& validationLayers,
+				  std::vector<char const*> const& requiredPhysicalDeviceExtensions)
 {
 	std::vector<float> queuePriorities = {1.0f};
 	std::unordered_set<uint32_t> uniqueQueueFamilyIndices = {queueFamilyIndices.graphicsFamily, queueFamilyIndices.presentationFamily};
@@ -393,11 +332,12 @@ vk::UniqueDevice VulkanResources::createDevice(std::vector<char const*> const& v
 	return physicalDevice.createDeviceUnique(deviceCreateInfo);
 }
 
-std::tuple<vk::UniqueSwapchainKHR, std::vector<vk::Image>, vk::Format, vk::Extent2D> VulkanResources::createSwapchain(SwapChainSupportDetails const& swapChainSupportDetails)
+auto createSwapchain(vk::Device device, vk::SurfaceKHR surface, GLFWwindow* window, QueueFamilyIndices const& queueFamilyIndices,
+					 SwapChainSupportDetails const& swapChainSupportDetails)
 {
 	auto surfaceFormat = chooseSwapSurfaceFormat(swapChainSupportDetails.formats);
 	auto presentMode = chooseSwapPresentMode(swapChainSupportDetails.presentModes);
-	auto extent = chooseSwapExtent(renderWindow, swapChainSupportDetails.capabilities);
+	auto extent = chooseSwapExtent(window, swapChainSupportDetails.capabilities);
 
 	uint32_t imageCount = swapChainSupportDetails.capabilities.minImageCount + 1;
 	if (swapChainSupportDetails.capabilities.maxImageCount > 0 && imageCount > swapChainSupportDetails.capabilities.maxImageCount)
@@ -417,18 +357,18 @@ std::tuple<vk::UniqueSwapchainKHR, std::vector<vk::Image>, vk::Format, vk::Exten
 		imageSharingMode = vk::SharingMode::eExclusive;
 	}
 
-	vk::SwapchainCreateInfoKHR createInfo{{}, surface.get(), imageCount, surfaceFormat.format, surfaceFormat.colorSpace, extent, 1,
+	vk::SwapchainCreateInfoKHR createInfo{{}, surface, imageCount, surfaceFormat.format, surfaceFormat.colorSpace, extent, 1,
 		vk::ImageUsageFlagBits::eColorAttachment, imageSharingMode, queueIndices, swapChainSupportDetails.capabilities.currentTransform,
 		vk::CompositeAlphaFlagBitsKHR::eOpaque, presentMode, vk::Bool32(true)};
 
-	auto newSwapchain = device->createSwapchainKHRUnique(createInfo);
-	assert(newSwapchain && "couldn't create swapchain");
-	auto newSwapChainImages = device->getSwapchainImagesKHR(newSwapchain.get());
+	auto newSwapchain = device.createSwapchainKHRUnique(createInfo);
+	auto newSwapChainImages = device.getSwapchainImagesKHR(newSwapchain.get());
 	assert(!newSwapChainImages.empty() && "couldn't get swapchain images");
-	return {std::move(newSwapchain), newSwapChainImages, surfaceFormat.format, extent};
+	return std::tuple<vk::UniqueSwapchainKHR, std::vector<vk::Image>, vk::Format, vk::Extent2D>{std::move(newSwapchain),
+		newSwapChainImages, surfaceFormat.format, extent};
 }
 
-std::vector<vk::UniqueImageView> VulkanResources::createSwapchainImageViews()
+auto createSwapchainImageViews(vk::Device device, std::vector<vk::Image> const& swapchainImages, vk::Format swapchainImageFormat)
 {
 	std::vector<vk::UniqueImageView> result{};
 	for (auto const& image : swapchainImages)
@@ -437,9 +377,119 @@ std::vector<vk::UniqueImageView> VulkanResources::createSwapchainImageViews()
 		vk::ImageViewCreateInfo imageViewCreateInfo({}, image, vk::ImageViewType::e2D, swapchainImageFormat,
 													{vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity,vk::ComponentSwizzle::eIdentity,vk::ComponentSwizzle::eIdentity},
 													subresourceRange);
-		result.push_back(device->createImageViewUnique(imageViewCreateInfo));
-		assert(result[result.size() - 1] && "couldn't create swapchain image view");
+		result.push_back(device.createImageViewUnique(imageViewCreateInfo));
 	}
 
 	return result;
+}
+
+auto createShaderModule(vk::Device device, std::vector<char> const& shaderCode)
+{
+	vk::ShaderModuleCreateInfo shaderModuleCreateInfo{{}, shaderCode.size(), reinterpret_cast<uint32_t const*>(shaderCode.data())};
+
+	return device.createShaderModuleUnique(shaderModuleCreateInfo);
+}
+
+auto createGraphicsPipeline(vk::Device device, vk::Extent2D const& swapchainExtent)
+{
+	auto vertexShaderCode = readFile("shaders/vertex.spv");
+	auto fragmentShaderCode = readFile("shaders/fragment.spv");
+	assert(!vertexShaderCode.empty() && !fragmentShaderCode.empty() && "couldn't read shader files");
+
+	vk::UniqueShaderModule vertexShaderModule = createShaderModule(device, vertexShaderCode);
+	formatPrint(std::cout, "Created vertex shader module"sv);
+	vk::UniqueShaderModule fragmentShaderModule = createShaderModule(device, fragmentShaderCode);
+	formatPrint(std::cout, "Created fragment shader module"sv);
+
+	vk::PipelineShaderStageCreateInfo vertexShaderStageCreateInfo{{}, vk::ShaderStageFlagBits::eVertex, vertexShaderModule.get(), "main"};
+	vk::PipelineShaderStageCreateInfo fragmentShaderStageCreateInfo{{}, vk::ShaderStageFlagBits::eFragment, fragmentShaderModule.get(), "main"};
+
+	std::vector<vk::PipelineShaderStageCreateInfo> shaderStages{vertexShaderStageCreateInfo, fragmentShaderStageCreateInfo};
+
+	std::vector<vk::DynamicState> dynamicStates = {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
+
+	vk::PipelineDynamicStateCreateInfo dynamicStateCreateInfo{{}, dynamicStates};
+
+	std::vector<vk::VertexInputBindingDescription> vertexInputBindingDescriptions{};
+	std::vector<vk::VertexInputAttributeDescription> vertexInputAttributeDescriptions{};
+	vk::PipelineVertexInputStateCreateInfo vertexInputStateCreateInfo{{}, vertexInputBindingDescriptions, vertexInputAttributeDescriptions};
+
+	vk::PipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo{{}, vk::PrimitiveTopology::eTriangleStrip, VK_FALSE};
+
+	vk::Viewport viewport{0.0f, 0.0f, static_cast<float>(swapchainExtent.width), static_cast<float>(swapchainExtent.height), 0.0f, 1.0f};
+	vk::Rect2D scissor{{0, 0}, swapchainExtent};
+
+	vk::PipelineViewportStateCreateInfo viewportStateCreateInfo{{}, viewport, scissor};
+
+	vk::PipelineRasterizationStateCreateInfo rasterizationStateCreateInfo{{}, VK_FALSE, VK_FALSE, vk::PolygonMode::eFill, vk::CullModeFlagBits::eBack,
+		vk::FrontFace::eClockwise, VK_FALSE, 0.0f, 0.0f, 0.0f, 1.0f};
+
+	vk::PipelineMultisampleStateCreateInfo multisampleStateCreateInfo{{}, vk::SampleCountFlagBits::e1, VK_FALSE, 1.0f, nullptr, VK_FALSE, VK_FALSE};
+
+	vk::PipelineColorBlendAttachmentState colorBlendAttachmentState{VK_FALSE, vk::BlendFactor::eOne, vk::BlendFactor::eZero, vk::BlendOp::eAdd,
+		vk::BlendFactor::eOne, vk::BlendFactor::eZero, vk::BlendOp::eAdd,
+		vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA};
+
+	vk::PipelineColorBlendStateCreateInfo colorBlendStateCreateInfo{{}, VK_FALSE, vk::LogicOp::eCopy, colorBlendAttachmentState, {0.0f, 0.0f, 0.0f, 0.0f}};
+
+	vk::PipelineLayoutCreateInfo layoutCreateInfo{{}, nullptr, nullptr};
+	auto pipelineLayout = device.createPipelineLayoutUnique(layoutCreateInfo);
+}
+
+VulkanResources::VulkanResources()
+	:windowContext(),
+	renderWindow(800, 600, windowContext)
+{
+	//load vulkan specific funcs into dispatcher
+	vk::DynamicLoader dynamicLoader;
+	auto vkGetInstanceProcAddr = dynamicLoader.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
+	VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);
+
+	auto validationLayers = getValidationLayers();
+	auto instanceExtensions = getInstanceExtensions();
+	auto debugUtilsMessengerCreateInfo = getDebugUtilsMessengerCreateInfo();
+
+	auto requiredPhysicalDeviceExtensions = enumerateRequiredFunc<vk::PhysicalDevice, vk::ExtensionProperties>();
+
+	instance = createInstance(validationLayers, instanceExtensions, debugUtilsMessengerCreateInfo.get());
+	formatPrint(std::cout, "Created an instance\n"sv);
+	VULKAN_HPP_DEFAULT_DISPATCHER.init(instance.get());
+
+	if (ENABLE_VALIDATION_LAYERS)
+	{
+		debugUtilsMessenger = createDebugUtilsMessenger(instance.get(), *debugUtilsMessengerCreateInfo);
+		formatPrint(std::cout, "Created a debug messenger\n"sv);
+	}
+
+	surface = createSurface(instance.get(), renderWindow);
+	formatPrint(std::cout, "Created a window surface\n"sv);
+
+	SwapChainSupportDetails swapChainSupportDetails;
+	std::tie(physicalDevice, queueFamilyIndices, swapChainSupportDetails) = choosePhysicalDevice(instance.get(), requiredPhysicalDeviceExtensions, surface.get());
+
+	device = createDevice(physicalDevice, queueFamilyIndices, validationLayers, requiredPhysicalDeviceExtensions);
+	VULKAN_HPP_DEFAULT_DISPATCHER.init(device.get());
+	formatPrint(std::cout, "Created logical device\n"sv);
+
+	graphicsQueue = device->getQueue(queueFamilyIndices.graphicsFamily, 0);
+	formatPrint(std::cout, "Acquired graphics queue\n"sv);
+	presentationQueue = device->getQueue(queueFamilyIndices.presentationFamily, 0);
+	formatPrint(std::cout, "Acquired presentation queue\n"sv);
+
+	std::tie(swapchain, swapchainImages, swapchainImageFormat, swapchainExtent) = createSwapchain(device.get(), surface.get(), renderWindow, queueFamilyIndices,
+																								  swapChainSupportDetails);
+	formatPrint(std::cout, "Created swap chain\n"sv);
+	formatPrint(std::cout, "{} swapchain images acquired"sv, swapchainImages.size());
+
+	swapchainImageViews = createSwapchainImageViews(device.get(), swapchainImages, swapchainImageFormat);
+}
+
+VulkanResources::~VulkanResources()
+{
+
+}
+
+bool VulkanResources::windowCloseStatus()
+{
+	return glfwWindowShouldClose(renderWindow);
 }

@@ -33,13 +33,6 @@ private:
 	vk::Format swapchainImageFormat;
 	vk::Extent2D swapchainExtent;
 	std::vector<vk::UniqueImageView> swapchainImageViews;
-
-	vk::UniqueInstance createInstance(std::vector<char const*> const& validationLayers, std::vector<char const*> const& instanceExtensions,
-									  vk::DebugUtilsMessengerCreateInfoEXT* debugUtilsMessengerCreateInfo);
-	vk::UniqueDebugUtilsMessengerEXT createDebugUtilsMessenger(vk::DebugUtilsMessengerCreateInfoEXT const& debugUtilsMessengerCreateInfo);
-	vk::UniqueSurfaceKHR createSurface();
-	vk::UniqueDevice createDevice(std::vector<char const*> const& validationLayers, std::vector<char const*> const& requiredPhysicalDeviceExtensions);
-	std::tuple<vk::UniqueSwapchainKHR, std::vector<vk::Image>, vk::Format, vk::Extent2D> createSwapchain(SwapChainSupportDetails const& swapChainSupportDetails);
-	std::vector<vk::UniqueImageView> createSwapchainImageViews();
+	vk::UniquePipelineLayout pipelineLayout;
 };
 

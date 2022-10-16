@@ -16,7 +16,18 @@ int main()
 		return 740;
 	}
 
-	Game game{};
+	try
+	{
+		Game game{};
+	}
+	catch (std::exception const& e)
+	{
+		errorLog << e.what();
+	}
+	catch (...)
+	{
+		errorLog << "Caught unknown exception\n";
+	}
 
 	return 0;
 }
