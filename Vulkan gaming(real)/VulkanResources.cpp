@@ -115,7 +115,7 @@ auto getQueueFamilyIndices(vk::PhysicalDevice const& physicalDevice, vk::Surface
 
 	bool foundGraphicsQueueFamily = false;
 	bool foundPresentationQueueFamily = false;
-	for (uint64_t i = 0; i < queueFamilies.size() && (!foundGraphicsQueueFamily || !foundPresentationQueueFamily); i++)
+	for (size_t i = 0; i < queueFamilies.size() && (!foundGraphicsQueueFamily || !foundPresentationQueueFamily); i++)
 	{
 		if (!foundGraphicsQueueFamily && queueFamilies[i].queueFlags & vk::QueueFlagBits::eGraphics)
 		{
@@ -320,7 +320,7 @@ auto createSurface(vk::Instance instance, GLFWwindow* window)
 auto createDevice(vk::PhysicalDevice physicalDevice, QueueFamilyIndices const& queueFamilyIndices, std::vector<char const*> const& validationLayers,
 				  std::vector<char const*> const& requiredPhysicalDeviceExtensions)
 {
-	std::vector<float> queuePriorities = {1.0f};
+	std::vector<float> queuePriorities{1.0f};
 	std::unordered_set<uint32_t> uniqueQueueFamilyIndices = {queueFamilyIndices.graphicsFamily, queueFamilyIndices.presentationFamily};
 	std::vector<vk::DeviceQueueCreateInfo> deviceQueueCreateInfos{};
 	for (auto index : uniqueQueueFamilyIndices)
@@ -397,7 +397,10 @@ auto createRenderPass(vk::Device device, vk::Format swapchainImageFormat)
 	vk::AttachmentReference colorAttachmentRef{0, vk::ImageLayout::eColorAttachmentOptimal};
 	vk::SubpassDescription subpass{{}, vk::PipelineBindPoint::eGraphics, nullptr, colorAttachmentRef};
 
-	vk::RenderPassCreateInfo renderPassCreateInfo{{}, colorAttachment, subpass};
+	vk::SubpassDependency subpassDependency{VK_SUBPASS_EXTERNAL, 0, vk::PipelineStageFlagBits::eColorAttachmentOutput,
+											vk::PipelineStageFlagBits::eColorAttachmentOutput, vk::AccessFlagBits{0}, vk::AccessFlagBits::eColorAttachmentWrite};
+
+	vk::RenderPassCreateInfo renderPassCreateInfo{{}, colorAttachment, subpass, subpassDependency};
 	return device.createRenderPassUnique(renderPassCreateInfo);
 }
 
@@ -417,7 +420,7 @@ auto createGraphicsPipeline(vk::Device device, vk::Extent2D const& swapchainExte
 
 	std::vector<vk::PipelineShaderStageCreateInfo> shaderStages{vertexShaderStageCreateInfo, fragmentShaderStageCreateInfo};
 
-	std::vector<vk::DynamicState> dynamicStates = {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
+	std::vector<vk::DynamicState> dynamicStates{vk::DynamicState::eViewport, vk::DynamicState::eScissor};
 
 	vk::PipelineDynamicStateCreateInfo dynamicStateCreateInfo{{}, dynamicStates};
 
@@ -452,6 +455,66 @@ auto createGraphicsPipeline(vk::Device device, vk::Extent2D const& swapchainExte
 	auto [result, pipeline] = device.createGraphicsPipelineUnique(nullptr, pipelineCreateInfo);
 	assert(result == vk::Result::eSuccess && "couldn't create graphics pipeline");
 	return std::make_tuple(std::move(pipelineLayout), std::move(pipeline));
+}
+
+auto createFramebuffers(vk::Device device, std::vector<vk::UniqueImageView> const& swapchainImageViews, vk::Extent2D const& swapchainExtent,
+						vk::RenderPass renderPass)
+{
+	std::vector<vk::UniqueFramebuffer> framebuffers;
+
+	for (size_t i = 0; i < swapchainImageViews.size(); i++)
+	{
+		vk::FramebufferCreateInfo framebufferCreateInfo{{}, renderPass, swapchainImageViews[i].get(), swapchainExtent.width, swapchainExtent.height, 1};
+		framebuffers.push_back(device.createFramebufferUnique(framebufferCreateInfo));
+	}
+	return framebuffers;
+}
+
+auto createCommandPool(vk::Device device, QueueFamilyIndices const& queueFamilyIndices)
+{
+	vk::CommandPoolCreateInfo commandPoolCreateInfo{vk::CommandPoolCreateFlagBits::eResetCommandBuffer, queueFamilyIndices.graphicsFamily};
+	return device.createCommandPoolUnique(commandPoolCreateInfo);
+}
+
+auto createCommandBuffer(vk::Device device, vk::CommandPool commandPool)
+{
+	vk::CommandBufferAllocateInfo commandBufferAllocateInfo{commandPool, vk::CommandBufferLevel::ePrimary, 1};
+	return device.allocateCommandBuffers(commandBufferAllocateInfo)[0];
+}
+
+auto recordCommandBuffer(vk::CommandBuffer commandBuffer, vk::Pipeline graphicsPipeline, vk::RenderPass renderPass, vk::Framebuffer swapchainFrameBuffer,
+						 vk::Extent2D const& swapchainExtent)
+{
+	vk::CommandBufferBeginInfo commandBufferBeginInfo{{}, nullptr};
+	commandBuffer.begin(commandBufferBeginInfo);
+
+	vk::ClearValue clearColor{vk::ClearColorValue{std::array{0.0f, 0.0f, 0.0f, 1.0f}}};
+	vk::RenderPassBeginInfo renderPassBeginInfo{renderPass, swapchainFrameBuffer, {{0, 0}, swapchainExtent}, clearColor};
+
+	commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
+
+	commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
+
+	vk::Viewport viewport{0.0f, 0.0f, static_cast<float>(swapchainExtent.width), static_cast<float>(swapchainExtent.height), 0.0f, 1.0f};
+	commandBuffer.setViewport(0, viewport);
+
+	vk::Rect2D scissor{{0, 0}, swapchainExtent};
+	commandBuffer.setScissor(0, scissor);
+
+	commandBuffer.draw(3, 1, 0, 0);
+
+	commandBuffer.endRenderPass();
+
+	commandBuffer.end();
+}
+
+auto createSyncObjects(vk::Device device)
+{
+	vk::SemaphoreCreateInfo semaphoreCreateInfo{{}, nullptr};
+	vk::FenceCreateInfo fenceCreateInfo{vk::FenceCreateFlagBits::eSignaled, nullptr};
+
+	return std::make_tuple(device.createSemaphoreUnique(semaphoreCreateInfo), device.createSemaphoreUnique(semaphoreCreateInfo),
+						   device.createFenceUnique(fenceCreateInfo));
 }
 
 VulkanResources::VulkanResources()
@@ -507,6 +570,18 @@ VulkanResources::VulkanResources()
 
 	std::tie(pipelineLayout, graphicsPipeline) = createGraphicsPipeline(device.get(), swapchainExtent, renderPass.get());
 	formatPrint(std::cout, "Created graphics pipeline\n"sv);
+
+	swapchainFramebuffers = createFramebuffers(device.get(), swapchainImageViews, swapchainExtent, renderPass.get());
+	formatPrint(std::cout, "Created {} framebuffers\n"sv, swapchainFramebuffers.size());
+
+	commandPool = createCommandPool(device.get(), queueFamilyIndices);
+	formatPrint(std::cout, "Created command pool\n"sv);
+
+	commandBuffer = createCommandBuffer(device.get(), commandPool.get());
+	formatPrint(std::cout, "Allocated command buffer\n"sv);
+
+	std::tie(imageAvailableSemaphore, renderFinishedSemaphore, inFlightFence) = createSyncObjects(device.get());
+	formatPrint(std::cout, "Created synchronization resources\n"sv);
 }
 
 VulkanResources::~VulkanResources()
@@ -517,4 +592,32 @@ VulkanResources::~VulkanResources()
 bool VulkanResources::windowCloseStatus()
 {
 	return glfwWindowShouldClose(renderWindow);
+}
+
+void VulkanResources::drawFrame()
+{
+	auto waitResult = device->waitForFences(inFlightFence.get(), VK_TRUE, std::numeric_limits<uint64_t>::max());
+	device->resetFences(inFlightFence.get());
+
+	auto [acquireResult, imageIndex] = device->acquireNextImageKHR(swapchain.get(), std::numeric_limits<uint64_t>::max(), imageAvailableSemaphore.get());
+
+	commandBuffer.reset();
+
+	recordCommandBuffer(commandBuffer, graphicsPipeline.get(), renderPass.get(), swapchainFramebuffers[imageIndex].get(), swapchainExtent);
+
+	std::array waitSemaphores{imageAvailableSemaphore.get()};
+	std::array waitStages{vk::PipelineStageFlags{vk::PipelineStageFlagBits::eColorAttachmentOutput}};
+	std::array signalSemaphores{renderFinishedSemaphore.get()};
+	vk::SubmitInfo submitInfo{waitSemaphores, waitStages, commandBuffer, signalSemaphores};
+
+	graphicsQueue.submit(submitInfo, inFlightFence.get());
+
+	vk::PresentInfoKHR presentInfo{signalSemaphores, swapchain.get(), imageIndex};
+
+	auto presentResult = presentationQueue.presentKHR(presentInfo);
+}
+
+void VulkanResources::stopRendering()
+{
+	device->waitIdle();
 }

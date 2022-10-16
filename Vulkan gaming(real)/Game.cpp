@@ -17,5 +17,8 @@ void Game::startLoop()
 	while (!gameShouldStop())
 	{
 		glfwPollEvents();
+		vulkan->drawFrame();
 	}
+
+	vulkan->stopRendering();
 }

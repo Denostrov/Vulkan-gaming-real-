@@ -17,6 +17,8 @@ public:
 	~VulkanResources();
 
 	bool windowCloseStatus();
+	void drawFrame();
+	void stopRendering();
 private:
 	WindowContext windowContext;
 	Window renderWindow;
@@ -36,5 +38,11 @@ private:
 	vk::UniqueRenderPass renderPass;
 	vk::UniquePipelineLayout pipelineLayout;
 	vk::UniquePipeline graphicsPipeline;
+	std::vector<vk::UniqueFramebuffer> swapchainFramebuffers;
+	vk::UniqueCommandPool commandPool;
+	vk::CommandBuffer commandBuffer;
+	vk::UniqueSemaphore imageAvailableSemaphore;
+	vk::UniqueSemaphore renderFinishedSemaphore;
+	vk::UniqueFence inFlightFence;
 };
 
