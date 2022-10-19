@@ -1,13 +1,34 @@
 #pragma once
 
-#include <vulkan/vulkan.hpp>
 #include <format>
 #include <iostream>
 #include <fstream>
 #include <string>
 
+#include "constants.h"
+
 inline std::ofstream debugLog{"log.txt", std::ios::binary};
 inline std::ofstream errorLog("errorLog.txt", std::ios::binary);
+
+template<class T>
+auto errorFatal(vk::ResultValue<T> const& rv, std::string const& message = {})
+{
+	if (rv.result != vk::Result::eSuccess)
+	{
+		errorLog << toString(rv.result) << ": "s << message << "\n"s;
+		std::exit(-1);
+	}
+	return rv.value;
+}
+
+inline auto errorFatal(bool val, std::string const& message = {})
+{
+	if (!val)
+	{
+		errorLog << message << "\n"s;
+		std::exit(-1);
+	}
+}
 
 inline VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 	VkDebugUtilsMessageTypeFlagsEXT messageType, VkDebugUtilsMessengerCallbackDataEXT const* callbackData, void* userData)

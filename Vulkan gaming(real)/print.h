@@ -7,6 +7,7 @@
 
 #include "constants.h"
 #include "helpers.h"
+#include "VulkanResources.h"
 
 using namespace std::literals;
 
@@ -957,8 +958,131 @@ inline std::string toString(vk::PresentModeKHR val)
 		break;
 	}
 }
+inline std::string toString(vk::Result val)
+{
+	switch (val)
+	{
+	case vk::Result::eSuccess:
+		return "Success"s;
+		break;
+	case vk::Result::eNotReady:
+		return "Not ready"s;
+		break;
+	case vk::Result::eTimeout:
+		return "Timeout"s;
+		break;
+	case vk::Result::eEventSet:
+		return "Event set"s;
+		break;
+	case vk::Result::eEventReset:
+		return "Event reset"s;
+		break;
+	case vk::Result::eIncomplete:
+		return "Incomplete"s;
+		break;
+	case vk::Result::eErrorOutOfHostMemory:
+		return "Error out of host memory"s;
+		break;
+	case vk::Result::eErrorOutOfDeviceMemory:
+		return "Error out of device memory"s;
+		break;
+	case vk::Result::eErrorInitializationFailed:
+		return "Error initialization failed"s;
+		break;
+	case vk::Result::eErrorDeviceLost:
+		return "Error device lost"s;
+		break;
+	case vk::Result::eErrorMemoryMapFailed:
+		return "Error memory map failed"s;
+		break;
+	case vk::Result::eErrorLayerNotPresent:
+		return "Error layer not present"s;
+		break;
+	case vk::Result::eErrorExtensionNotPresent:
+		return "Error extension not present"s;
+		break;
+	case vk::Result::eErrorFeatureNotPresent:
+		return "Error feature not present"s;
+		break;
+	case vk::Result::eErrorIncompatibleDriver:
+		return "Error incompatible driver"s;
+		break;
+	case vk::Result::eErrorTooManyObjects:
+		return "Error too many objects"s;
+		break;
+	case vk::Result::eErrorFormatNotSupported:
+		return "Error format not supported"s;
+		break;
+	case vk::Result::eErrorFragmentedPool:
+		return "Error fragmented pool"s;
+		break;
+	case vk::Result::eErrorUnknown:
+		return "Error unknown"s;
+		break;
+	case vk::Result::eErrorOutOfPoolMemory:
+		return "Error out of pool memory"s;
+		break;
+	case vk::Result::eErrorInvalidExternalHandle:
+		return "Error invalid external handle"s;
+		break;
+	case vk::Result::eErrorFragmentation:
+		return "Error fragmentation"s;
+		break;
+	case vk::Result::eErrorInvalidOpaqueCaptureAddress:
+		return "Error invalid opaque capture address"s;
+		break;
+	case vk::Result::ePipelineCompileRequired:
+		return "Pipeline compile required"s;
+		break;
+	case vk::Result::eErrorSurfaceLostKHR:
+		return "Error surface lost"s;
+		break;
+	case vk::Result::eErrorNativeWindowInUseKHR:
+		return "Error native window in use"s;
+		break;
+	case vk::Result::eSuboptimalKHR:
+		return "Suboptimal"s;
+		break;
+	case vk::Result::eErrorOutOfDateKHR:
+		return "Error out of date"s;
+		break;
+	case vk::Result::eErrorIncompatibleDisplayKHR:
+		return "Error incompatible display"s;
+		break;
+	case vk::Result::eErrorValidationFailedEXT:
+		return "Error validation failed"s;
+		break;
+	case vk::Result::eErrorInvalidShaderNV:
+		return "Error invalid shader"s;
+		break;
+	case vk::Result::eErrorInvalidDrmFormatModifierPlaneLayoutEXT:
+		return "Error invalid drm format modifier plane layout"s;
+		break;
+	case vk::Result::eErrorNotPermittedKHR:
+		return "Error not permitted"s;
+		break;
+	case vk::Result::eThreadIdleKHR:
+		return "Thread idle"s;
+		break;
+	case vk::Result::eThreadDoneKHR:
+		return "Thread done"s;
+		break;
+	case vk::Result::eOperationDeferredKHR:
+		return "Operation deferred"s;
+		break;
+	case vk::Result::eOperationNotDeferredKHR:
+		return "Operation not deferred"s;
+		break;
+	case vk::Result::eErrorCompressionExhaustedEXT:
+		return "Error compression exhausted"s;
+		break;
+	default:
+		return "Undefined"s;
+		break;
+	}
+}
 template<class T>
-inline std::string toString() {}
+inline std::string toString() = delete;
 template<>
 inline std::string toString<vk::Instance>()
 {

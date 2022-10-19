@@ -2,6 +2,8 @@
 
 #include "constants.h"
 
+class VulkanResources;
+
 struct WindowContext
 {
 	WindowContext();
@@ -14,7 +16,7 @@ struct WindowContext
 class Window
 {
 public:
-	Window(int32_t width, int32_t height, WindowContext const&);
+	Window(int32_t width, int32_t height, WindowContext const&, VulkanResources* vulkan);
 	~Window();
 
 	Window(Window const&) = delete;
