@@ -6,7 +6,6 @@
 #include <string_view>
 
 #include "constants.h"
-#include "helpers.h"
 #include "VulkanResources.h"
 
 using namespace std::literals;

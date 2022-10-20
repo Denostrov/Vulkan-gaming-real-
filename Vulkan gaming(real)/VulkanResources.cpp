@@ -2,6 +2,7 @@
 
 #include <unordered_set>
 
+#include "helpers.h"
 #include "logging.h"
 #include "print.h"
 
@@ -165,7 +166,9 @@ auto rateDeviceScore(vk::PhysicalDevice const& physicalDevice, std::vector<char 
 	{
 		multiplier++;
 	}
+	score += physicalDeviceProperties.limits.maxImageDimension1D;
 	score += physicalDeviceProperties.limits.maxImageDimension2D;
+	score += physicalDeviceProperties.limits.maxImageDimension3D;
 	score += physicalDeviceProperties.limits.maxBoundDescriptorSets;
 	score += physicalDeviceProperties.limits.maxPushConstantsSize;
 	score += physicalDeviceProperties.limits.maxFramebufferHeight;
@@ -258,6 +261,7 @@ auto chooseSwapSurfaceFormat(std::vector<vk::SurfaceFormatKHR> const& surfaceFor
 auto chooseSwapPresentMode(std::vector<vk::PresentModeKHR> const& presentModes)
 {
 	vk::PresentModeKHR chosenPresentMode{};
+	chosenPresentMode = vk::PresentModeKHR::eFifo;
 	for (auto const& mode : presentModes)
 	{
 		if (mode == vk::PresentModeKHR::eMailbox)
@@ -266,7 +270,6 @@ auto chooseSwapPresentMode(std::vector<vk::PresentModeKHR> const& presentModes)
 			break;
 		}
 	}
-	chosenPresentMode = vk::PresentModeKHR::eFifo;
 	formatPrint(std::cout, "Picked swap present mode: {}\n"sv, getFormatString(chosenPresentMode));
 	return chosenPresentMode;
 }
@@ -531,7 +534,7 @@ auto createSyncObjects(vk::Device device)
 }
 
 SwapchainResources::SwapchainResources(vk::Device device, vk::SurfaceKHR surface, GLFWwindow* window, QueueFamilyIndices const& queueFamilyIndices,
-									   SwapchainSupportDetails const& swapchainSupportDetails, vk::SwapchainKHR oldSwapchain = nullptr)
+									   SwapchainSupportDetails const& swapchainSupportDetails, vk::SwapchainKHR oldSwapchain)
 {
 	std::tie(swapchain, swapchainImages, swapchainImageFormat, swapchainExtent) = createSwapchain(device, surface, window, queueFamilyIndices,
 																								  swapchainSupportDetails, oldSwapchain);
@@ -559,8 +562,8 @@ void OldResourceQueue<T>::updateCleanup()
 {
 	if (!oldResources.empty())
 	{
-		std::for_each(oldResources.begin(), oldResources.end(), [](OldResourceQueue<T>::OldResource const& p) { --p.conditionsLeft; });
-		std::erase_if(oldResources, [](OldResourceQueue<T>::OldResource const& p) { p.conditionsLeft == 0; });
+		std::for_each(oldResources.begin(), oldResources.end(), [](OldResourceQueue<T>::OldResource& p) { --p.conditionsLeft; });
+		std::erase_if(oldResources, [](OldResourceQueue<T>::OldResource const& p) { return p.conditionsLeft == 0; });
 	}
 }
 
@@ -592,6 +595,7 @@ VulkanResources::VulkanResources()
 	surface = createSurface(instance.get(), renderWindow);
 	formatPrint(std::cout, "Created a window surface\n"sv);
 
+	SwapchainSupportDetails swapchainSupportDetails{};
 	std::tie(physicalDevice, queueFamilyIndices, swapchainSupportDetails) = choosePhysicalDevice(instance.get(), requiredPhysicalDeviceExtensions, surface.get());
 
 	device = createDevice(physicalDevice, queueFamilyIndices, validationLayers, requiredPhysicalDeviceExtensions);
@@ -629,63 +633,27 @@ void VulkanResources::drawFrame()
 
 	oldSwapchainResources.updateCleanup();
 
-	vk::Result acquireResult{};
-	uint32_t imageIndex{};
-	try
-	{
-		std::tie(acquireResult, imageIndex) = device->acquireNextImageKHR(swapchainResources->swapchain.get(), std::numeric_limits<uint64_t>::max(),
-																		  imageAvailableSemaphores[currentFrame].get());
-	}
-	catch (std::exception const&)
+	auto [acquireResult, imageIndex] = device->acquireNextImageKHR(swapchainResources->swapchain.get(), std::numeric_limits<uint64_t>::max(),
+																   imageAvailableSemaphores[currentFrame].get());
+	if (acquireResult == vk::Result::eErrorOutOfDateKHR || framebufferResized)
 	{
 		framebufferResized = false;
 		recreateSwapchainResources();
 		return;
 	}
-	if (framebufferResized)
+	else if (acquireResult == vk::Result::eSuboptimalKHR)
 	{
 		framebufferResized = false;
 		recreateSwapchainResources();
-		return;
+		submitImage(oldSwapchainResources[oldSwapchainResources.size() - 1], imageIndex, true);
 	}
-	if (acquireResult == vk::Result::eSuboptimalKHR)
+	else if (acquireResult != vk::Result::eSuccess)
 	{
-		framebufferResized = false;
-		recreateSwapchainResources();
-		submitOldImage(oldSwapchainResources[oldSwapchainResources.size() - 1], imageIndex);
+		errorFatal(acquireResult, "couldn't acquire next image"s);
 	}
 	else
 	{
-		commandBuffers[currentFrame].reset();
-
-		recordCommandBuffer(commandBuffers[currentFrame], graphicsPipeline.get(), swapchainResources->renderPass.get(),
-							swapchainResources->swapchainFramebuffers[imageIndex].get(), swapchainResources->swapchainExtent);
-
-		std::array waitSemaphores{imageAvailableSemaphores[currentFrame].get()};
-		std::array waitStages{vk::PipelineStageFlags{vk::PipelineStageFlagBits::eColorAttachmentOutput}};
-		std::array signalSemaphores{renderFinishedSemaphores[currentFrame].get()};
-		vk::SubmitInfo submitInfo{waitSemaphores, waitStages, commandBuffers[currentFrame], signalSemaphores};
-
-		device->resetFences(inFlightFences[currentFrame].get());
-		graphicsQueue.submit(submitInfo, inFlightFences[currentFrame].get());
-
-		vk::PresentInfoKHR presentInfo{signalSemaphores, swapchainResources->swapchain.get(), imageIndex};
-
-		vk::Result presentResult{};
-		try
-		{
-			presentResult = presentationQueue.presentKHR(presentInfo);
-		}
-		catch (std::exception const&)
-		{
-			framebufferResized = false;
-			recreateSwapchainResources();
-		}
-		if (presentResult == vk::Result::eSuboptimalKHR || framebufferResized)
-		{
-			framebufferResized = false;
-			recreateSwapchainResources();
-		}
+		submitImage(*swapchainResources, imageIndex);
 	}
 
 	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
@@ -693,23 +661,31 @@ void VulkanResources::drawFrame()
 
 void VulkanResources::stopRendering()
 {
-	device->waitIdle();
+	errorFatal(device->waitIdle(), "couldn't wait for device idle"s);
 }
 
 void VulkanResources::recreateSwapchainResources()
 {
+	int width = 0, height = 0;
+	glfwGetFramebufferSize(renderWindow, &width, &height);
+	while (width == 0 || height == 0)
+	{
+		glfwWaitEvents();
+		glfwGetFramebufferSize(renderWindow, &width, &height);
+	}
+
 	auto newSwapchainResources = std::make_unique<SwapchainResources>(device.get(), surface.get(), renderWindow, queueFamilyIndices,
-																	  swapchainSupportDetails, swapchainResources->swapchain.get());
-	oldSwapchainResources.push_back({std::move(swapchainResources), 0});
+																	  getSwapchainSupportDetails(physicalDevice, surface.get()), swapchainResources->swapchain.get());
+	oldSwapchainResources.addToCleanup(std::move(swapchainResources), MAX_FRAMES_IN_FLIGHT + 1);
 	swapchainResources = std::move(newSwapchainResources);
 }
 
-void VulkanResources::submitOldImage(OldSwapchainResources const& oldSwapchain, uint32_t imageIndex)
+void VulkanResources::submitImage(SwapchainResources const& swapchainResources, uint32_t imageIndex, bool isSwapchainRetired)
 {
 	commandBuffers[currentFrame].reset();
 
-	recordCommandBuffer(commandBuffers[currentFrame], graphicsPipeline.get(), oldSwapchain.swapchainResources->renderPass.get(),
-						oldSwapchain.swapchainResources->swapchainFramebuffers[imageIndex].get(), oldSwapchain.swapchainResources->swapchainExtent);
+	recordCommandBuffer(commandBuffers[currentFrame], graphicsPipeline.get(), swapchainResources.renderPass.get(),
+						swapchainResources.swapchainFramebuffers[imageIndex].get(), swapchainResources.swapchainExtent);
 
 	std::array waitSemaphores{imageAvailableSemaphores[currentFrame].get()};
 	std::array waitStages{vk::PipelineStageFlags{vk::PipelineStageFlagBits::eColorAttachmentOutput}};
@@ -717,17 +693,22 @@ void VulkanResources::submitOldImage(OldSwapchainResources const& oldSwapchain, 
 	vk::SubmitInfo submitInfo{waitSemaphores, waitStages, commandBuffers[currentFrame], signalSemaphores};
 
 	device->resetFences(inFlightFences[currentFrame].get());
-	graphicsQueue.submit(submitInfo, inFlightFences[currentFrame].get());
+	errorFatal(graphicsQueue.submit(submitInfo, inFlightFences[currentFrame].get()), "couldn't submit to queue"s);
 
-	vk::PresentInfoKHR presentInfo{signalSemaphores, oldSwapchain.swapchainResources->swapchain.get(), imageIndex};
+	vk::PresentInfoKHR presentInfo{signalSemaphores, swapchainResources.swapchain.get(), imageIndex};
 
 	vk::Result presentResult{};
-	try
+	presentResult = presentationQueue.presentKHR(presentInfo);
+	if (!isSwapchainRetired)
 	{
-		presentResult = presentationQueue.presentKHR(presentInfo);
-	}
-	catch (std::exception const&)
-	{
-		
+		if (presentResult == vk::Result::eErrorOutOfDateKHR || presentResult == vk::Result::eSuboptimalKHR || framebufferResized)
+		{
+			framebufferResized = false;
+			recreateSwapchainResources();
+		}
+		else if (presentResult != vk::Result::eSuccess)
+		{
+			errorFatal(presentResult, "couldn't present image"s);
+		}
 	}
 }

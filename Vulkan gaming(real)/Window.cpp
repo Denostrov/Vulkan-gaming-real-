@@ -10,6 +10,14 @@ void framebufferResizeCallback(GLFWwindow* window, int width, int height)
 	vulkan->framebufferResized = true;
 }
 
+void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+	{
+		glfwSetWindowShouldClose(window, true);
+	}
+}
+
 WindowContext::WindowContext()
 {
 	glfwInit();
@@ -29,6 +37,7 @@ Window::Window(int32_t width, int32_t height, WindowContext const&, VulkanResour
 	window = glfwCreateWindow(width, height, "Cocksweeper", nullptr, nullptr);
 	glfwSetWindowUserPointer(window, vulkan);
 	glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+	glfwSetKeyCallback(window, keyCallback);
 }
 
 Window::~Window()

@@ -8,6 +8,8 @@
 
 #include <array>
 
+using namespace std::literals;
+
 static constexpr std::array<char const*, 1> VALIDATION_LAYERS{"VK_LAYER_KHRONOS_validation"};
 static constexpr std::array<char const*, 1> DEVICE_EXTENSIONS{ VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 

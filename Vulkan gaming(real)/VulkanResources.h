@@ -18,9 +18,8 @@ struct SwapchainSupportDetails
 
 struct SwapchainResources
 {
-	SwapchainResources() = default;
 	SwapchainResources(vk::Device device, vk::SurfaceKHR surface, GLFWwindow* window, QueueFamilyIndices const& queueFamilyIndices,
-					   SwapchainSupportDetails const& swapchainSupportDetails, vk::SwapchainKHR oldSwapchain);
+					   SwapchainSupportDetails const& swapchainSupportDetails, vk::SwapchainKHR oldSwapchain = nullptr);
 
 	vk::UniqueSwapchainKHR swapchain;
 	std::vector<vk::Image> swapchainImages;
@@ -41,6 +40,9 @@ struct OldResourceQueue
 	};
 	void addToCleanup(std::unique_ptr<T>&& res, uint64_t waitCount);
 	void updateCleanup();
+	T& operator[](uint64_t index) { return *oldResources[index].resource; }
+	T const& operator[](uint64_t index) const { return *oldResources[index].resource; }
+	uint64_t size() const { return oldResources.size(); }
 
 private:
 	std::vector<OldResource> oldResources;
@@ -55,10 +57,11 @@ public:
 	void drawFrame();
 	void stopRendering();
 	void recreateSwapchainResources();
-	void submitOldImage(SwapchainResources const& oldSwapchain, uint32_t imageIndex);
 
 	bool framebufferResized = false;
 private:
+	void submitImage(SwapchainResources const& oldSwapchain, uint32_t imageIndex, bool isSwapchainRetired = false);
+
 	WindowContext windowContext;
 	Window renderWindow;
 	vk::UniqueInstance instance;
@@ -66,7 +69,6 @@ private:
 	vk::UniqueSurfaceKHR surface;
 	vk::PhysicalDevice physicalDevice;
 	QueueFamilyIndices queueFamilyIndices;
-	SwapchainSupportDetails swapchainSupportDetails;
 	vk::UniqueDevice device;
 	vk::Queue graphicsQueue;
 	vk::Queue presentationQueue;

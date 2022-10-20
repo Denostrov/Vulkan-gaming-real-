@@ -6,21 +6,33 @@
 #include <string>
 
 #include "constants.h"
+#include "print.h"
 
 inline std::ofstream debugLog{"log.txt", std::ios::binary};
 inline std::ofstream errorLog("errorLog.txt", std::ios::binary);
 
 template<class T>
-auto errorFatal(vk::ResultValue<T> const& rv, std::string const& message = {})
+inline auto errorFatal(vk::ResultValue<T>&& rv, std::string const& message = {})
 {
 	if (rv.result != vk::Result::eSuccess)
 	{
 		errorLog << toString(rv.result) << ": "s << message << "\n"s;
 		std::exit(-1);
 	}
-	return rv.value;
+	return std::move(rv.value);
 }
-
+inline auto errorFatal(vk::Result r, std::string const& message = {})
+{
+	if (r != vk::Result::eSuccess)
+	{
+		errorLog << toString(r) << ": "s << message << "\n"s;
+		std::exit(-1);
+	}
+}
+inline auto errorFatal(VkResult r, std::string const& message = {})
+{
+	errorFatal(vk::Result(r), message);
+}
 inline auto errorFatal(bool val, std::string const& message = {})
 {
 	if (!val)
