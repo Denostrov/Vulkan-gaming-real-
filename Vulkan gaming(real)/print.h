@@ -1080,6 +1080,86 @@ inline std::string toString(vk::Result val)
 		break;
 	}
 }
+inline std::string toString(vk::MemoryPropertyFlagBits val)
+{
+	switch (val)
+	{
+	case vk::MemoryPropertyFlagBits::eDeviceLocal:
+		return "Device local"s;
+		break;
+	case vk::MemoryPropertyFlagBits::eHostVisible:
+		return "Host visible"s;
+		break;
+	case vk::MemoryPropertyFlagBits::eHostCoherent:
+		return "Host coherent"s;
+		break;
+	case vk::MemoryPropertyFlagBits::eHostCached:
+		return "Host cached"s;
+		break;
+	case vk::MemoryPropertyFlagBits::eLazilyAllocated:
+		return "Lazily allocated"s;
+		break;
+	case vk::MemoryPropertyFlagBits::eProtected:
+		return "Protected"s;
+		break;
+	case vk::MemoryPropertyFlagBits::eDeviceCoherentAMD:
+		return "Device coherent"s;
+		break;
+	case vk::MemoryPropertyFlagBits::eDeviceUncachedAMD:
+		return "Device uncached"s;
+		break;
+	case vk::MemoryPropertyFlagBits::eRdmaCapableNV:
+		return "RDMA capable"s;
+		break;
+	default:
+		return "Undefined"s;
+		break;
+	}
+}
+inline std::string toString(vk::MemoryPropertyFlags val)
+{
+	auto result = ""s;
+	result += val & vk::MemoryPropertyFlagBits::eDeviceLocal ? toString(vk::MemoryPropertyFlagBits::eDeviceLocal) + " "s : ""s;
+	result += val & vk::MemoryPropertyFlagBits::eHostVisible ? toString(vk::MemoryPropertyFlagBits::eHostVisible) + " "s : ""s;
+	result += val & vk::MemoryPropertyFlagBits::eHostCoherent ? toString(vk::MemoryPropertyFlagBits::eHostCoherent) + " "s : ""s;
+	result += val & vk::MemoryPropertyFlagBits::eHostCached ? toString(vk::MemoryPropertyFlagBits::eHostCached) + " "s : ""s;
+	result += val & vk::MemoryPropertyFlagBits::eLazilyAllocated ? toString(vk::MemoryPropertyFlagBits::eLazilyAllocated) + " "s : ""s;
+	result += val & vk::MemoryPropertyFlagBits::eProtected ? toString(vk::MemoryPropertyFlagBits::eProtected) + " "s : ""s;
+	result += val & vk::MemoryPropertyFlagBits::eDeviceCoherentAMD ? toString(vk::MemoryPropertyFlagBits::eDeviceCoherentAMD) + " "s : ""s;
+	result += val & vk::MemoryPropertyFlagBits::eDeviceUncachedAMD ? toString(vk::MemoryPropertyFlagBits::eDeviceUncachedAMD) + " "s : ""s;
+	result += val & vk::MemoryPropertyFlagBits::eRdmaCapableNV ? toString(vk::MemoryPropertyFlagBits::eRdmaCapableNV) + " "s : ""s;
+	return result;
+}
+inline std::string toString(vk::MemoryType type)
+{
+	return std::vformat("{{heap index: {}, properties: {}}}", std::make_format_args(type.heapIndex, toString(type.propertyFlags)));
+}
+inline std::string toString(vk::MemoryHeapFlagBits val)
+{
+	switch (val)
+	{
+	case vk::MemoryHeapFlagBits::eDeviceLocal:
+		return "Device local"s;
+		break;
+	case vk::MemoryHeapFlagBits::eMultiInstance:
+		return "Multi instance"s;
+		break;
+	default:
+		return "Undefined"s;
+		break;
+	}
+}
+inline std::string toString(vk::MemoryHeapFlags val)
+{
+	auto result = ""s;
+	result += val & vk::MemoryHeapFlagBits::eDeviceLocal ? toString(vk::MemoryHeapFlagBits::eDeviceLocal) + " "s : ""s;
+	result += val & vk::MemoryHeapFlagBits::eMultiInstance ? toString(vk::MemoryHeapFlagBits::eMultiInstance) + " "s : ""s;
+	return result;
+}
+inline std::string toString(vk::MemoryHeap heap)
+{
+	return std::vformat("{{size: {}, flags: {}}}", std::make_format_args(heap.size, toString(heap.flags)));
+}
 template<class T>
 inline std::string toString() = delete;
 template<>
@@ -1456,6 +1536,24 @@ inline auto getFormatString(vk::PhysicalDeviceFeatures const& val)
 									LabelValuePair{"Sparse residency aliased"s, bool(val.sparseResidencyAliased)},
 									LabelValuePair{"Variable multisample rate"s, bool(val.variableMultisampleRate)},
 									LabelValuePair{"Inherited queries"s, bool(val.inheritedQueries)});
+}
+inline auto getFormatString(vk::PhysicalDeviceMemoryProperties const& val)
+{
+	auto result = getLabelValuePairsString(LabelValuePair{"Memory type count"s, val.memoryTypeCount}) + ": "s;
+	for (auto const& type : val.memoryTypes)
+	{
+		result += toString(type) + ", "s;
+	}
+	result += getLabelValuePairsString(LabelValuePair{"Memory heap count"s, val.memoryHeapCount}) + ": "s;
+	for (auto const& heap : val.memoryHeaps)
+	{
+		if (heap.size != 0)
+		{
+			result += toString(heap) + ", "s;
+		}
+	}
+	result[result.size() - 2] = ' ';
+	return result;
 }
 inline auto getFormatString(vk::QueueFamilyProperties const& val)
 {

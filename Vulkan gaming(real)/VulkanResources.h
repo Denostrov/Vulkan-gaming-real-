@@ -60,7 +60,7 @@ public:
 
 	bool framebufferResized = false;
 private:
-	void submitImage(SwapchainResources const& oldSwapchain, uint32_t imageIndex, bool isSwapchainRetired = false);
+	void submitImage(SwapchainResources const& swapchain, uint32_t imageIndex, bool isSwapchainRetired = false);
 
 	WindowContext windowContext;
 	Window renderWindow;
@@ -77,6 +77,9 @@ private:
 	vk::UniquePipelineLayout pipelineLayout;
 	vk::UniquePipeline graphicsPipeline;
 	vk::UniqueCommandPool commandPool;
+	vk::UniqueCommandPool shortBufferCommandPool;
+	vk::UniqueBuffer vertexBuffer;
+	vk::UniqueDeviceMemory vertexBufferMemory;
 	std::vector<vk::CommandBuffer> commandBuffers;
 	std::vector<vk::UniqueSemaphore> imageAvailableSemaphores;
 	std::vector<vk::UniqueSemaphore> renderFinishedSemaphores;

@@ -220,7 +220,9 @@ auto choosePhysicalDevice(vk::Instance const& instance, std::vector<char const*>
 	{
 		auto physicalDeviceProperties = currentPhysicalDevice.getProperties();
 		auto physicalDeviceFeatures = currentPhysicalDevice.getFeatures();
-		std::cout << getFormatString(physicalDeviceProperties) << ",\t"s << getFormatString(physicalDeviceFeatures) << "\n"s;
+		auto physicalDeviceMemoryProperties = currentPhysicalDevice.getMemoryProperties();
+		std::cout << getFormatString(physicalDeviceProperties) << ",\t"s << getFormatString(physicalDeviceFeatures) << ",\t"s <<
+			getFormatString(physicalDeviceMemoryProperties) << "\n"s;
 		uint64_t currentPhysicalDeviceScore{};
 		QueueFamilyIndices currentPhysicalDeviceQueueIndices{};
 		SwapchainSupportDetails currentSwapchainSupportDetails{};
@@ -433,8 +435,8 @@ auto createGraphicsPipeline(vk::Device device, vk::Extent2D const& swapchainExte
 
 	vk::PipelineDynamicStateCreateInfo dynamicStateCreateInfo{{}, dynamicStates};
 
-	std::vector<vk::VertexInputBindingDescription> vertexInputBindingDescriptions{};
-	std::vector<vk::VertexInputAttributeDescription> vertexInputAttributeDescriptions{};
+	std::vector<vk::VertexInputBindingDescription> vertexInputBindingDescriptions = {Vertex::getBindingDescription()};
+	std::vector<vk::VertexInputAttributeDescription> vertexInputAttributeDescriptions = Vertex::getAttributeDescriptions();
 	vk::PipelineVertexInputStateCreateInfo vertexInputStateCreateInfo{{}, vertexInputBindingDescriptions, vertexInputAttributeDescriptions};
 
 	vk::PipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo{{}, vk::PrimitiveTopology::eTriangleStrip, VK_FALSE};
@@ -478,10 +480,82 @@ auto createFramebuffers(vk::Device device, std::vector<vk::UniqueImageView> cons
 	return framebuffers;
 }
 
-auto createCommandPool(vk::Device device, QueueFamilyIndices const& queueFamilyIndices)
+auto createCommandPool(vk::Device device, QueueFamilyIndices const& queueFamilyIndices, vk::CommandPoolCreateFlags flags)
 {
-	vk::CommandPoolCreateInfo commandPoolCreateInfo{vk::CommandPoolCreateFlagBits::eResetCommandBuffer, queueFamilyIndices.graphicsFamily};
+	vk::CommandPoolCreateInfo commandPoolCreateInfo{flags, queueFamilyIndices.graphicsFamily};
 	return errorFatal(device.createCommandPoolUnique(commandPoolCreateInfo), "couldn't create command pool"s);
+}
+
+auto findMemoryType(vk::PhysicalDevice physicalDevice, uint32_t typeFilter, vk::MemoryPropertyFlags memoryPropertyFlags)
+{
+	auto memoryProperties = physicalDevice.getMemoryProperties();
+	for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++)
+	{
+		if ((typeFilter & (1 << i)) && (memoryProperties.memoryTypes[i].propertyFlags & memoryPropertyFlags) == memoryPropertyFlags)
+		{
+			return i;
+		}
+	}
+
+	errorFatal(false, "couldn't find memory type"s);
+	return 0U;
+}
+
+auto createBuffer(vk::Device device, vk::PhysicalDevice physicalDevice, vk::DeviceSize size, vk::BufferUsageFlags bufferUsage,
+				  vk::MemoryPropertyFlags memoryProperties)
+{
+	vk::BufferCreateInfo bufferInfo{{}, size, bufferUsage, vk::SharingMode::eExclusive};
+	auto buffer = errorFatal(device.createBufferUnique(bufferInfo), "couldn't create vertex buffer"s);
+
+	auto memoryRequirements = device.getBufferMemoryRequirements(buffer.get());
+
+	vk::MemoryAllocateInfo memoryAllocateInfo{memoryRequirements.size, findMemoryType(physicalDevice, memoryRequirements.memoryTypeBits, 
+																					  memoryProperties)};
+	auto bufferMemory = errorFatal(device.allocateMemoryUnique(memoryAllocateInfo), "couldn't allocate vertex buffer memory"s);
+
+	errorFatal(device.bindBufferMemory(buffer.get(), bufferMemory.get(), 0), "couldn't bind buffer memory"s);
+
+	return std::make_tuple(std::move(buffer), std::move(bufferMemory));
+}
+
+auto copyBuffer(vk::Device device, vk::Queue graphicsQueue, vk::CommandPool stagingBufferCommandPool,
+				vk::Buffer sourceBuffer, vk::Buffer destBuffer, vk::DeviceSize size)
+{
+	vk::CommandBufferAllocateInfo allocateInfo{stagingBufferCommandPool, vk::CommandBufferLevel::ePrimary, 1};
+
+	auto commandBuffer = errorFatal(device.allocateCommandBuffersUnique(allocateInfo), "couldn't allocate copy command buffer"s);
+
+	vk::CommandBufferBeginInfo beginInfo{vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
+
+	errorFatal(commandBuffer[0]->begin(beginInfo), "couldn't begin command buffer"s);
+
+	vk::BufferCopy bufferCopy{0, 0, size};
+	commandBuffer[0]->copyBuffer(sourceBuffer, destBuffer, bufferCopy);
+
+	errorFatal(commandBuffer[0]->end(), "couldn't end command buffer"s);
+
+	vk::SubmitInfo submitInfo{{}, {}, commandBuffer[0].get()};
+
+	errorFatal(graphicsQueue.submit(submitInfo), "couldn't submit to graphics queue"s);
+	errorFatal(graphicsQueue.waitIdle(), "couldn't wait for graphics queue to become idle"s);
+}
+
+auto createVertexBuffer(vk::Device device, vk::PhysicalDevice physicalDevice, vk::Queue graphicsQueue, vk::CommandPool stagingBufferCommandPool)
+{
+	vk::DeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+	auto [stagingBuffer, stagingMemory] = createBuffer(device, physicalDevice, bufferSize, vk::BufferUsageFlagBits::eTransferSrc,
+										 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+
+	auto data = errorFatal(device.mapMemory(stagingMemory.get(), 0, bufferSize, {}), "couldn't map buffer memory"s);
+	memcpy(data, vertices.data(), bufferSize);
+	device.unmapMemory(stagingMemory.get());
+
+	auto [vertexBuffer, vertexMemory] = createBuffer(device, physicalDevice, bufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
+						vk::MemoryPropertyFlagBits::eDeviceLocal);
+
+	copyBuffer(device, graphicsQueue, stagingBufferCommandPool, stagingBuffer.get(), vertexBuffer.get(), bufferSize);
+
+	return std::make_tuple(std::move(vertexBuffer), std::move(vertexMemory));
 }
 
 auto createCommandBuffers(vk::Device device, vk::CommandPool commandPool)
@@ -491,7 +565,7 @@ auto createCommandBuffers(vk::Device device, vk::CommandPool commandPool)
 }
 
 auto recordCommandBuffer(vk::CommandBuffer commandBuffer, vk::Pipeline graphicsPipeline, vk::RenderPass renderPass, vk::Framebuffer swapchainFrameBuffer,
-						 vk::Extent2D const& swapchainExtent)
+						 vk::Extent2D const& swapchainExtent, vk::Buffer vertexBuffer)
 {
 	vk::CommandBufferBeginInfo commandBufferBeginInfo{{}, nullptr};
 	errorFatal(commandBuffer.begin(commandBufferBeginInfo) == vk::Result::eSuccess, "couldn't begin command buffer"s);
@@ -503,13 +577,15 @@ auto recordCommandBuffer(vk::CommandBuffer commandBuffer, vk::Pipeline graphicsP
 
 	commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
 
+	commandBuffer.bindVertexBuffers(0, vertexBuffer, 0ULL);
+
 	vk::Viewport viewport{0.0f, 0.0f, static_cast<float>(swapchainExtent.width), static_cast<float>(swapchainExtent.height), 0.0f, 1.0f};
 	commandBuffer.setViewport(0, viewport);
 
 	vk::Rect2D scissor{{0, 0}, swapchainExtent};
 	commandBuffer.setScissor(0, scissor);
 
-	commandBuffer.draw(3, 1, 0, 0);
+	commandBuffer.draw(static_cast<uint32_t>(vertices.size()), 1, 0, 0);
 
 	commandBuffer.endRenderPass();
 
@@ -612,8 +688,14 @@ VulkanResources::VulkanResources()
 	std::tie(pipelineLayout, graphicsPipeline) = createGraphicsPipeline(device.get(), swapchainResources->swapchainExtent, swapchainResources->renderPass.get());
 	formatPrint(std::cout, "Created graphics pipeline\n"sv);
 
-	commandPool = createCommandPool(device.get(), queueFamilyIndices);
+	commandPool = createCommandPool(device.get(), queueFamilyIndices, vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
 	formatPrint(std::cout, "Created command pool\n"sv);
+
+	shortBufferCommandPool = createCommandPool(device.get(), queueFamilyIndices, vk::CommandPoolCreateFlagBits::eTransient);
+	formatPrint(std::cout, "Created short buffer command pool\n"sv);
+
+	std::tie(vertexBuffer, vertexBufferMemory) = createVertexBuffer(device.get(), physicalDevice, graphicsQueue, shortBufferCommandPool.get());
+	formatPrint(std::cout, "Created vertex buffer\n"sv);
 
 	commandBuffers = createCommandBuffers(device.get(), commandPool.get());
 	formatPrint(std::cout, "Allocated command buffer\n"sv);
@@ -685,7 +767,7 @@ void VulkanResources::submitImage(SwapchainResources const& swapchainResources, 
 	commandBuffers[currentFrame].reset();
 
 	recordCommandBuffer(commandBuffers[currentFrame], graphicsPipeline.get(), swapchainResources.renderPass.get(),
-						swapchainResources.swapchainFramebuffers[imageIndex].get(), swapchainResources.swapchainExtent);
+						swapchainResources.swapchainFramebuffers[imageIndex].get(), swapchainResources.swapchainExtent, vertexBuffer.get());
 
 	std::array waitSemaphores{imageAvailableSemaphores[currentFrame].get()};
 	std::array waitStages{vk::PipelineStageFlags{vk::PipelineStageFlagBits::eColorAttachmentOutput}};
