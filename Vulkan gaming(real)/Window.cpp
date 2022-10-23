@@ -12,9 +12,14 @@ void framebufferResizeCallback(GLFWwindow* window, int width, int height)
 
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
+	auto vulkan = reinterpret_cast<VulkanResources*>(glfwGetWindowUserPointer(window));
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
 	{
 		glfwSetWindowShouldClose(window, true);
+	}
+	else if (key == GLFW_KEY_F3 && action == GLFW_PRESS)
+	{
+		vulkan->toggleWireframeMode();
 	}
 }
 

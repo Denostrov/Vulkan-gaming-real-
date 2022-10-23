@@ -13,6 +13,7 @@ using namespace std::literals;
 
 static constexpr std::array<char const*, 1> VALIDATION_LAYERS{"VK_LAYER_KHRONOS_validation"};
 static constexpr std::array<char const*, 1> DEVICE_EXTENSIONS{ VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+static constexpr std::array<char const*, 1> OPTIONAL_DEVICE_FEATURES{ };
 
 static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -42,6 +43,8 @@ static constexpr std::array<Vertex, 4> vertices = {
 	Vertex{{-0.5f, 0.5f},	{0.0f, 0.0f, 1.0f}},
 	Vertex{{0.5f, 0.5f}, {1.0f, 1.0f, 0.0f}}
 };
+
+static constexpr std::array<uint16_t, 4> indices = {0, 1, 2, 3};
 
 #ifdef NDEBUG
 static constexpr bool ENABLE_VALIDATION_LAYERS = false;
