@@ -1,6 +1,7 @@
 #include "VulkanResources.h"
 
 #include <unordered_set>
+#include <chrono>
 
 #include "helpers.h"
 #include "logging.h"
@@ -423,9 +424,17 @@ auto VulkanResources::createRenderPass(vk::Format swapchainImageFormat)
 	return errorFatal(device->createRenderPassUnique(renderPassCreateInfo), "couldn't create render pass"s);
 }
 
+auto VulkanResources::createDescriptorSetLayout()
+{
+	vk::DescriptorSetLayoutBinding uboLayoutBinding{0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex};
+
+	vk::DescriptorSetLayoutCreateInfo layoutCreateInfo{{}, uboLayoutBinding};
+	return errorFatal(device->createDescriptorSetLayoutUnique(layoutCreateInfo));
+}
+
 auto VulkanResources::createGraphicsPipelineLayout()
 {
-	vk::PipelineLayoutCreateInfo layoutCreateInfo{{}, nullptr, nullptr};
+	vk::PipelineLayoutCreateInfo layoutCreateInfo{{}, descriptorSetLayout.get(), nullptr};
 	return errorFatal(device->createPipelineLayoutUnique(layoutCreateInfo), "couldn't create pipeline layout"s);
 }
 
@@ -550,6 +559,45 @@ auto VulkanResources::copyBuffer(vk::Buffer sourceBuffer, vk::Buffer destBuffer,
 	errorFatal(graphicsQueue.waitIdle(), "couldn't wait for graphics queue to become idle"s);
 }
 
+auto VulkanResources::createUniformBuffers()
+{
+	std::vector<vk::UniqueBuffer> buffers(MAX_FRAMES_IN_FLIGHT);
+	std::vector<vk::UniqueDeviceMemory> buffersMemory(MAX_FRAMES_IN_FLIGHT);
+	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+	{
+		std::tie(buffers[i], buffersMemory[i]) = createBuffer(sizeof(UniformBufferObject), vk::BufferUsageFlagBits::eUniformBuffer,
+																			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+	}
+	return std::make_tuple(std::move(buffers), std::move(buffersMemory));
+}
+
+auto VulkanResources::createDescriptorPool()
+{
+	vk::DescriptorPoolSize poolSize{vk::DescriptorType::eUniformBuffer, MAX_FRAMES_IN_FLIGHT};
+
+	vk::DescriptorPoolCreateInfo poolCreateInfo{{}, MAX_FRAMES_IN_FLIGHT, poolSize};
+	return errorFatal(device->createDescriptorPoolUnique(poolCreateInfo), "couldn't create descriptor pool"s);
+}
+
+auto VulkanResources::createDescriptorSets()
+{
+	std::vector<vk::DescriptorSetLayout> descriptorSetLayouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout.get());
+
+	vk::DescriptorSetAllocateInfo allocateInfo{descriptorPool.get(), descriptorSetLayouts};
+	auto descriptorSets = errorFatal(device->allocateDescriptorSets(allocateInfo), "couldn't allocate descriptor sets"s);
+
+	for (uint64_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+	{
+		vk::DescriptorBufferInfo bufferInfo{uniformBuffers[i].get(), 0, sizeof(UniformBufferObject)};
+
+		vk::WriteDescriptorSet descriptorWrite{descriptorSets[i], 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &bufferInfo};
+
+		device->updateDescriptorSets(descriptorWrite, {});
+	}
+
+	return descriptorSets;
+}
+
 template<class Data>
 auto VulkanResources::createDeviceLocalBuffer(Data const& arr, vk::BufferUsageFlags bufferUsage)
 {
@@ -573,6 +621,21 @@ auto VulkanResources::createCommandBuffers()
 {
 	vk::CommandBufferAllocateInfo commandBufferAllocateInfo{commandPool.get(), vk::CommandBufferLevel::ePrimary, MAX_FRAMES_IN_FLIGHT};
 	return errorFatal(device->allocateCommandBuffers(commandBufferAllocateInfo), "couldn't allocate command buffers"s);
+}
+
+auto VulkanResources::updateUniformBuffer(uint64_t frameIndex)
+{
+	static auto startTime = std::chrono::high_resolution_clock::now();
+	auto currentTime = std::chrono::high_resolution_clock::now();
+
+	auto elapsedTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+	UniformBufferObject mvp{glm::ortho(-1.0f, 1.0f, 1.0f, -1.0f)};
+	mvp.mvp *= glm::lookAt(glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+	mvp.mvp *= glm::rotate(glm::mat4(1.0f), elapsedTime * glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+
+	auto data = errorFatal(device->mapMemory(uniformBuffersMemory[frameIndex].get(), 0, sizeof(mvp)), "couldn't map memory"s);
+	memcpy(data, &mvp, sizeof(mvp));
+	device->unmapMemory(uniformBuffersMemory[frameIndex].get());
 }
 
 auto VulkanResources::recordCommandBuffer(uint32_t imageIndex, SwapchainResources const& swapchainResources, vk::Buffer vertexBuffer)
@@ -600,6 +663,8 @@ auto VulkanResources::recordCommandBuffer(uint32_t imageIndex, SwapchainResource
 
 	vk::Rect2D scissor{{0, 0}, swapchainResources.swapchainExtent};
 	commandBuffer.setScissor(0, scissor);
+
+	commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout.get(), 0, descriptorSets[currentFrame], {});
 
 	commandBuffer.drawIndexed(static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 
@@ -711,6 +776,9 @@ VulkanResources::VulkanResources()
 	presentationQueue = device->getQueue(queueFamilyIndices.presentationFamily, 0);
 	formatPrint(std::cout, "Acquired presentation queue\n"sv);
 
+	descriptorSetLayout = createDescriptorSetLayout();
+	formatPrint(std::cout, "Created descriptor set layout"sv);
+
 	pipelineLayout = createGraphicsPipelineLayout();
 	formatPrint(std::cout, "Created graphics pipeline layout\n"sv);
 
@@ -727,6 +795,15 @@ VulkanResources::VulkanResources()
 
 	std::tie(indexBuffer, indexBufferMemory) = createDeviceLocalBuffer(indices, vk::BufferUsageFlagBits::eIndexBuffer);
 	formatPrint(std::cout, "Created index buffer\n"sv);
+
+	std::tie(uniformBuffers, uniformBuffersMemory) = createUniformBuffers();
+	formatPrint(std::cout, "Created {} uniform buffers"sv, uniformBuffers.size());
+
+	descriptorPool = createDescriptorPool();
+	formatPrint(std::cout, "Created descriptor pool"sv);
+
+	descriptorSets = createDescriptorSets();
+	formatPrint(std::cout, "Created descriptor sets"sv);
 
 	commandBuffers = createCommandBuffers();
 	formatPrint(std::cout, "Allocated command buffer\n"sv);
@@ -795,6 +872,8 @@ void VulkanResources::recreateSwapchainResources()
 
 void VulkanResources::submitImage(SwapchainResources const& swapchainResources, uint32_t imageIndex, bool isSwapchainRetired)
 {
+	updateUniformBuffer(currentFrame);
+
 	commandBuffers[currentFrame].reset();
 
 	recordCommandBuffer(imageIndex, swapchainResources, vertexBuffer.get());

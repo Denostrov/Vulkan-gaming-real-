@@ -6,6 +6,7 @@
 #include <vulkan/vulkan.hpp>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include <array>
 
@@ -35,6 +36,11 @@ struct Vertex
 		};
 		return attributeDescriptions;
 	}
+};
+
+struct UniformBufferObject
+{
+	glm::mat4 mvp;
 };
 
 static constexpr std::array<Vertex, 4> vertices = {

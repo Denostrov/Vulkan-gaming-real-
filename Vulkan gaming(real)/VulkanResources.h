@@ -92,6 +92,7 @@ private:
 	vk::UniqueDevice device;
 	vk::Queue graphicsQueue;
 	vk::Queue presentationQueue;
+	vk::UniqueDescriptorSetLayout descriptorSetLayout;
 	vk::UniquePipelineLayout pipelineLayout;
 	std::unique_ptr<SwapchainResources> swapchainResources;
 	OldResourceQueue<SwapchainResources> oldSwapchainResources;
@@ -101,6 +102,10 @@ private:
 	vk::UniqueDeviceMemory vertexBufferMemory;
 	vk::UniqueBuffer indexBuffer;
 	vk::UniqueDeviceMemory indexBufferMemory;
+	std::vector<vk::UniqueBuffer> uniformBuffers;
+	std::vector<vk::UniqueDeviceMemory> uniformBuffersMemory;
+	vk::UniqueDescriptorPool descriptorPool;
+	std::vector<vk::DescriptorSet> descriptorSets;
 	std::vector<vk::CommandBuffer> commandBuffers;
 	std::vector<vk::UniqueSemaphore> imageAvailableSemaphores;
 	std::vector<vk::UniqueSemaphore> renderFinishedSemaphores;
@@ -119,16 +124,21 @@ private:
 	auto createRenderPass(vk::Format swapchainImageFormat);
 	auto createFramebuffers(std::vector<vk::UniqueImageView> const& swapchainImageViews, vk::Extent2D const& swapchainExtent, vk::RenderPass renderPass);
 	auto createShaderModule(std::vector<char> const& shaderCode);
+	auto createDescriptorSetLayout();
 	auto createGraphicsPipelineLayout();
 	auto createGraphicsPipeline(vk::Extent2D viewportExtent, vk::RenderPass renderPass, vk::PolygonMode polygonMode);
 	auto createCommandPool(vk::CommandPoolCreateFlags flags);
 	auto createBuffer(vk::DeviceSize size, vk::BufferUsageFlags bufferUsage, vk::MemoryPropertyFlags memoryProperties);
 	auto copyBuffer(vk::Buffer sourceBuffer, vk::Buffer destBuffer, vk::DeviceSize size);
+	auto createUniformBuffers();
+	auto createDescriptorPool();
+	auto createDescriptorSets();
 
 	template<class Data>
 	auto createDeviceLocalBuffer(Data const& data, vk::BufferUsageFlags bufferUsage);
 
 	auto createCommandBuffers();
+	auto updateUniformBuffer(uint64_t frameIndex);
 	auto recordCommandBuffer(uint32_t imageIndex, SwapchainResources const& swapchainResources, vk::Buffer vertexBuffer);
 	auto createSyncObjects();
 	void submitImage(SwapchainResources const& swapchain, uint32_t imageIndex, bool isSwapchainRetired = false);
