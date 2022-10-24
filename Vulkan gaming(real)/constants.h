@@ -22,6 +22,7 @@ struct Vertex
 {
 	glm::vec2 position;
 	glm::vec3 color;
+	glm::vec2 texCoord;
 
 	static auto getBindingDescription()
 	{
@@ -31,8 +32,9 @@ struct Vertex
 	static auto getAttributeDescriptions()
 	{
 		std::vector<vk::VertexInputAttributeDescription> attributeDescriptions{
-			vk::VertexInputAttributeDescription{0, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, position)},
-			vk::VertexInputAttributeDescription{1, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, color)}
+			{0, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, position)},
+			{1, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, color)},
+			{2, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, texCoord)}
 		};
 		return attributeDescriptions;
 	}
@@ -44,10 +46,10 @@ struct UniformBufferObject
 };
 
 static constexpr std::array<Vertex, 4> vertices = {
-	Vertex{{-0.5f, -0.5f},	{1.0f, 0.0f, 0.0f}},
-	Vertex{{0.5f, -0.5f},	{0.0f, 1.0f, 0.0f}},
-	Vertex{{-0.5f, 0.5f},	{0.0f, 0.0f, 1.0f}},
-	Vertex{{0.5f, 0.5f}, {1.0f, 1.0f, 0.0f}}
+	Vertex{{-0.5f, -0.5f},	{1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+	Vertex{{0.5f, -0.5f},	{0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+	Vertex{{-0.5f, 0.5f},	{0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+	Vertex{{0.5f, 0.5f}, {1.0f, 1.0f, 0.0f}, {1.0f, 1.0f}}
 };
 
 static constexpr std::array<uint16_t, 4> indices = {0, 1, 2, 3};

@@ -3,6 +3,9 @@
 #include "print.h"
 #include "logging.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 int main()

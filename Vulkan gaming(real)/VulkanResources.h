@@ -98,6 +98,10 @@ private:
 	OldResourceQueue<SwapchainResources> oldSwapchainResources;
 	vk::UniqueCommandPool commandPool;
 	vk::UniqueCommandPool shortBufferCommandPool;
+	vk::UniqueImage textureImage;
+	vk::UniqueDeviceMemory textureImageMemory;
+	vk::UniqueImageView textureImageView;
+	vk::UniqueSampler textureSampler;
 	vk::UniqueBuffer vertexBuffer;
 	vk::UniqueDeviceMemory vertexBufferMemory;
 	vk::UniqueBuffer indexBuffer;
@@ -119,6 +123,7 @@ private:
 	auto rateDeviceScore(vk::PhysicalDevice const& physicalDevice, std::vector<char const*> const& requiredPhysicalDeviceExtensions);
 	auto choosePhysicalDevice(std::vector<char const*> const& requiredPhysicalDeviceExtensions);
 	auto createDevice(std::vector<char const*> const& validationLayers, std::vector<char const*> const& requiredPhysicalDeviceExtensions);
+	auto createImageView(vk::Image image, vk::Format format);
 	auto createSwapchain(SwapchainSupportDetails const& swapchainSupportDetails, vk::SwapchainKHR oldSwapchain = nullptr);
 	auto createSwapchainImageViews(std::vector<vk::Image> const& swapchainImages, vk::Format swapchainImageFormat);
 	auto createRenderPass(vk::Format swapchainImageFormat);
@@ -128,6 +133,8 @@ private:
 	auto createGraphicsPipelineLayout();
 	auto createGraphicsPipeline(vk::Extent2D viewportExtent, vk::RenderPass renderPass, vk::PolygonMode polygonMode);
 	auto createCommandPool(vk::CommandPoolCreateFlags flags);
+	auto beginSingleTimeCommands();
+	auto endSingleTimeCommands(vk::CommandBuffer commandBuffer);
 	auto createBuffer(vk::DeviceSize size, vk::BufferUsageFlags bufferUsage, vk::MemoryPropertyFlags memoryProperties);
 	auto copyBuffer(vk::Buffer sourceBuffer, vk::Buffer destBuffer, vk::DeviceSize size);
 	auto createUniformBuffers();
@@ -135,8 +142,16 @@ private:
 	auto createDescriptorSets();
 
 	template<class Data>
+	auto createStagingBuffer(Data* data, vk::DeviceSize size);
+	template<class Data>
 	auto createDeviceLocalBuffer(Data const& data, vk::BufferUsageFlags bufferUsage);
 
+	auto copyBufferToImage(vk::Buffer buffer, vk::Image image, uint32_t width, uint32_t height);
+	auto transitionImageLayout(vk::Image image, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout);
+	auto createImage(uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties);
+	auto createTextureImage();
+	auto createTextureImageView();
+	auto createTextureSampler();
 	auto createCommandBuffers();
 	auto updateUniformBuffer(uint64_t frameIndex);
 	auto recordCommandBuffer(uint32_t imageIndex, SwapchainResources const& swapchainResources, vk::Buffer vertexBuffer);

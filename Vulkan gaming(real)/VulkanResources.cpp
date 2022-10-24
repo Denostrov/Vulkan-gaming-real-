@@ -2,6 +2,7 @@
 
 #include <unordered_set>
 #include <chrono>
+#include <stb_image.h>
 
 #include "helpers.h"
 #include "logging.h"
@@ -157,9 +158,10 @@ auto VulkanResources::getSwapchainSupportDetails(vk::PhysicalDevice const& physi
 }
 
 auto VulkanResources::rateDeviceScore(vk::PhysicalDevice const& physicalDevice,
-																				  std::vector<char const*> const& requiredPhysicalDeviceExtensions)
+									  std::vector<char const*> const& requiredPhysicalDeviceExtensions)
 {
 	auto physicalDeviceProperties = physicalDevice.getProperties();
+	auto physicalDeviceFeatures = physicalDevice.getFeatures();
 
 	uint64_t score = 1;
 	uint64_t multiplier = 1;
@@ -205,6 +207,8 @@ auto VulkanResources::rateDeviceScore(vk::PhysicalDevice const& physicalDevice,
 	requirementMultiplier = result ? 1 : 0;
 	score *= requirementMultiplier;
 
+	score *= physicalDeviceFeatures.samplerAnisotropy ? 1 : 0;
+
 	return std::make_tuple(score * multiplier, queueFamilyIndices, swapchainSupportDetails);
 }
 
@@ -212,6 +216,7 @@ auto getOptionalPhysicalDeviceFeatures(vk::PhysicalDeviceFeatures const& support
 {
 	vk::PhysicalDeviceFeatures result{};
 	result.fillModeNonSolid = supportedFeatures.fillModeNonSolid;
+	result.samplerAnisotropy = supportedFeatures.samplerAnisotropy;
 	return result;
 }
 
@@ -353,6 +358,16 @@ auto VulkanResources::createDevice(std::vector<char const*> const& validationLay
 	return errorFatal(physicalDevice.createDeviceUnique(deviceCreateInfo), "couldn't create device"s);
 }
 
+auto VulkanResources::createImageView(vk::Image image, vk::Format format)
+{
+	vk::ImageSubresourceRange subresourceRange{vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1};
+	vk::ImageViewCreateInfo viewCreateInfo{{}, image, vk::ImageViewType::e2D, format,
+										   {vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity,vk::ComponentSwizzle::eIdentity,vk::ComponentSwizzle::eIdentity},
+											subresourceRange};
+
+	return errorFatal(device->createImageViewUnique(viewCreateInfo), "couldn't create image view"s);
+}
+
 auto VulkanResources::createSwapchain(SwapchainSupportDetails const& swapchainSupportDetails, vk::SwapchainKHR oldSwapchain)
 {
 	auto surfaceFormat = chooseSwapSurfaceFormat(swapchainSupportDetails.formats);
@@ -396,7 +411,7 @@ auto VulkanResources::createSwapchainImageViews(std::vector<vk::Image> const& sw
 		vk::ImageViewCreateInfo imageViewCreateInfo({}, image, vk::ImageViewType::e2D, swapchainImageFormat,
 													{vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity,vk::ComponentSwizzle::eIdentity,vk::ComponentSwizzle::eIdentity},
 													subresourceRange);
-		result.push_back(errorFatal(device->createImageViewUnique(imageViewCreateInfo), "couldn't create image view"s));
+		result.push_back(createImageView(image, swapchainImageFormat));
 	}
 
 	return result;
@@ -428,7 +443,11 @@ auto VulkanResources::createDescriptorSetLayout()
 {
 	vk::DescriptorSetLayoutBinding uboLayoutBinding{0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex};
 
-	vk::DescriptorSetLayoutCreateInfo layoutCreateInfo{{}, uboLayoutBinding};
+	vk::DescriptorSetLayoutBinding samplerLayoutBinding{1, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment};
+
+	std::vector bindings{uboLayoutBinding, samplerLayoutBinding};
+
+	vk::DescriptorSetLayoutCreateInfo layoutCreateInfo{{}, bindings};
 	return errorFatal(device->createDescriptorSetLayoutUnique(layoutCreateInfo));
 }
 
@@ -489,7 +508,7 @@ auto VulkanResources::createGraphicsPipeline(vk::Extent2D viewportExtent, vk::Re
 }
 
 auto VulkanResources::createFramebuffers(std::vector<vk::UniqueImageView> const& swapchainImageViews, vk::Extent2D const& swapchainExtent,
-						vk::RenderPass renderPass)
+										 vk::RenderPass renderPass)
 {
 	std::vector<vk::UniqueFramebuffer> framebuffers;
 
@@ -505,6 +524,29 @@ auto VulkanResources::createCommandPool(vk::CommandPoolCreateFlags flags)
 {
 	vk::CommandPoolCreateInfo commandPoolCreateInfo{flags, queueFamilyIndices.graphicsFamily};
 	return errorFatal(device->createCommandPoolUnique(commandPoolCreateInfo), "couldn't create command pool"s);
+}
+
+auto VulkanResources::beginSingleTimeCommands()
+{
+	vk::CommandBufferAllocateInfo allocateInfo{shortBufferCommandPool.get(), vk::CommandBufferLevel::ePrimary, 1};
+
+	auto commandBuffer = errorFatal(device->allocateCommandBuffersUnique(allocateInfo), "couldn't allocate copy command buffer"s);
+
+	vk::CommandBufferBeginInfo beginInfo{vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
+
+	errorFatal(commandBuffer[0]->begin(beginInfo), "couldn't begin command buffer"s);
+
+	return std::move(commandBuffer[0]);
+}
+
+auto VulkanResources::endSingleTimeCommands(vk::CommandBuffer commandBuffer)
+{
+	errorFatal(commandBuffer.end(), "couldn't end command buffer"s);
+
+	vk::SubmitInfo submitInfo{{}, {}, commandBuffer};
+
+	errorFatal(graphicsQueue.submit(submitInfo), "couldn't submit to graphics queue"s);
+	errorFatal(graphicsQueue.waitIdle(), "couldn't wait for graphics queue to become idle"s);
 }
 
 auto findMemoryType(vk::PhysicalDevice physicalDevice, uint32_t typeFilter, vk::MemoryPropertyFlags memoryPropertyFlags)
@@ -529,7 +571,7 @@ auto VulkanResources::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags buf
 
 	auto memoryRequirements = device->getBufferMemoryRequirements(buffer.get());
 
-	vk::MemoryAllocateInfo memoryAllocateInfo{memoryRequirements.size, findMemoryType(physicalDevice, memoryRequirements.memoryTypeBits, 
+	vk::MemoryAllocateInfo memoryAllocateInfo{memoryRequirements.size, findMemoryType(physicalDevice, memoryRequirements.memoryTypeBits,
 																					  memoryProperties)};
 	auto bufferMemory = errorFatal(device->allocateMemoryUnique(memoryAllocateInfo), "couldn't allocate vertex buffer memory"s);
 
@@ -540,23 +582,12 @@ auto VulkanResources::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags buf
 
 auto VulkanResources::copyBuffer(vk::Buffer sourceBuffer, vk::Buffer destBuffer, vk::DeviceSize size)
 {
-	vk::CommandBufferAllocateInfo allocateInfo{shortBufferCommandPool.get(), vk::CommandBufferLevel::ePrimary, 1};
-
-	auto commandBuffer = errorFatal(device->allocateCommandBuffersUnique(allocateInfo), "couldn't allocate copy command buffer"s);
-
-	vk::CommandBufferBeginInfo beginInfo{vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
-
-	errorFatal(commandBuffer[0]->begin(beginInfo), "couldn't begin command buffer"s);
+	auto commandBuffer = beginSingleTimeCommands();
 
 	vk::BufferCopy bufferCopy{0, 0, size};
-	commandBuffer[0]->copyBuffer(sourceBuffer, destBuffer, bufferCopy);
+	commandBuffer->copyBuffer(sourceBuffer, destBuffer, bufferCopy);
 
-	errorFatal(commandBuffer[0]->end(), "couldn't end command buffer"s);
-
-	vk::SubmitInfo submitInfo{{}, {}, commandBuffer[0].get()};
-
-	errorFatal(graphicsQueue.submit(submitInfo), "couldn't submit to graphics queue"s);
-	errorFatal(graphicsQueue.waitIdle(), "couldn't wait for graphics queue to become idle"s);
+	endSingleTimeCommands(commandBuffer.get());
 }
 
 auto VulkanResources::createUniformBuffers()
@@ -566,16 +597,19 @@ auto VulkanResources::createUniformBuffers()
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
 		std::tie(buffers[i], buffersMemory[i]) = createBuffer(sizeof(UniformBufferObject), vk::BufferUsageFlagBits::eUniformBuffer,
-																			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+															  vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 	}
 	return std::make_tuple(std::move(buffers), std::move(buffersMemory));
 }
 
 auto VulkanResources::createDescriptorPool()
 {
-	vk::DescriptorPoolSize poolSize{vk::DescriptorType::eUniformBuffer, MAX_FRAMES_IN_FLIGHT};
+	vk::DescriptorPoolSize uniformPoolSize{vk::DescriptorType::eUniformBuffer, MAX_FRAMES_IN_FLIGHT};
+	vk::DescriptorPoolSize samplerPoolSize{vk::DescriptorType::eCombinedImageSampler, MAX_FRAMES_IN_FLIGHT};
 
-	vk::DescriptorPoolCreateInfo poolCreateInfo{{}, MAX_FRAMES_IN_FLIGHT, poolSize};
+	std::vector poolSizes{uniformPoolSize, samplerPoolSize};
+
+	vk::DescriptorPoolCreateInfo poolCreateInfo{{}, MAX_FRAMES_IN_FLIGHT, poolSizes};
 	return errorFatal(device->createDescriptorPoolUnique(poolCreateInfo), "couldn't create descriptor pool"s);
 }
 
@@ -590,31 +624,155 @@ auto VulkanResources::createDescriptorSets()
 	{
 		vk::DescriptorBufferInfo bufferInfo{uniformBuffers[i].get(), 0, sizeof(UniformBufferObject)};
 
-		vk::WriteDescriptorSet descriptorWrite{descriptorSets[i], 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &bufferInfo};
+		vk::DescriptorImageInfo imageInfo{textureSampler.get(), textureImageView.get(), vk::ImageLayout::eShaderReadOnlyOptimal};
 
-		device->updateDescriptorSets(descriptorWrite, {});
+		vk::WriteDescriptorSet bufferDescriptorWrite{descriptorSets[i], 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &bufferInfo};
+
+		vk::WriteDescriptorSet imageDescriptorWrite{descriptorSets[i], 1, 0, vk::DescriptorType::eCombinedImageSampler, imageInfo};
+
+		std::vector descriptorWrites{bufferDescriptorWrite, imageDescriptorWrite};
+
+		device->updateDescriptorSets(descriptorWrites, {});
 	}
 
 	return descriptorSets;
 }
 
 template<class Data>
+auto VulkanResources::createStagingBuffer(Data* data, vk::DeviceSize size)
+{
+	auto [stagingBuffer, stagingMemory] = createBuffer(size, vk::BufferUsageFlagBits::eTransferSrc,
+													   vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+
+	auto dataTarget = errorFatal(device->mapMemory(stagingMemory.get(), 0, size, {}), "couldn't map buffer memory"s);
+	memcpy(dataTarget, data, size);
+	device->unmapMemory(stagingMemory.get());
+
+	return std::make_tuple(std::move(stagingBuffer), std::move(stagingMemory));
+}
+
+template<class Data>
 auto VulkanResources::createDeviceLocalBuffer(Data const& arr, vk::BufferUsageFlags bufferUsage)
 {
 	vk::DeviceSize bufferSize = sizeof(arr[0]) * arr.size();
-	auto [stagingBuffer, stagingMemory] = createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc,
-													   vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
-	auto data = errorFatal(device->mapMemory(stagingMemory.get(), 0, bufferSize, {}), "couldn't map buffer memory"s);
-	memcpy(data, arr.data(), bufferSize);
-	device->unmapMemory(stagingMemory.get());
+	auto [stagingBuffer, stagingMemory] = createStagingBuffer(arr.data(), bufferSize);
 
 	auto [finalBuffer, finalMemory] = createBuffer(bufferSize, bufferUsage | vk::BufferUsageFlagBits::eTransferDst,
-													 vk::MemoryPropertyFlagBits::eDeviceLocal);
+												   vk::MemoryPropertyFlagBits::eDeviceLocal);
 
 	copyBuffer(stagingBuffer.get(), finalBuffer.get(), bufferSize);
 
 	return std::make_tuple(std::move(finalBuffer), std::move(finalMemory));
+}
+
+auto VulkanResources::copyBufferToImage(vk::Buffer buffer, vk::Image image, uint32_t width, uint32_t height)
+{
+	auto commandBuffer = beginSingleTimeCommands();
+
+	vk::ImageSubresourceLayers subresourceLayers{vk::ImageAspectFlagBits::eColor, 0, 0, 1};
+	vk::BufferImageCopy bufferImageCopy{0, 0, 0, subresourceLayers, {0, 0, 0}, {width, height, 1}};
+
+	commandBuffer->copyBufferToImage(buffer, image, vk::ImageLayout::eTransferDstOptimal, bufferImageCopy);
+
+	endSingleTimeCommands(commandBuffer.get());
+}
+
+auto VulkanResources::transitionImageLayout(vk::Image image, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout)
+{
+	auto commandBuffer = beginSingleTimeCommands();
+
+	vk::AccessFlags srcAccessMask;
+	vk::AccessFlags dstAccessMask;
+	vk::PipelineStageFlags sourceStage;
+	vk::PipelineStageFlags destinationStage;
+	if (oldLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::eTransferDstOptimal)
+	{
+		srcAccessMask = {};
+		dstAccessMask = vk::AccessFlagBits::eTransferWrite;
+
+		sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
+		destinationStage = vk::PipelineStageFlagBits::eTransfer;
+	}
+	else if (oldLayout == vk::ImageLayout::eTransferDstOptimal && newLayout == vk::ImageLayout::eShaderReadOnlyOptimal)
+	{
+		srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+		dstAccessMask = vk::AccessFlagBits::eShaderRead;
+
+		sourceStage = vk::PipelineStageFlagBits::eTransfer;
+		destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
+	}
+	else
+	{
+		errorFatal(false, "unknown image layout transition"s);
+	}
+
+	vk::ImageSubresourceRange imageSubresourceRange{vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1};
+	vk::ImageMemoryBarrier imageMemoryBarrier{srcAccessMask, dstAccessMask, oldLayout, newLayout, VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
+		image, imageSubresourceRange};
+
+	commandBuffer->pipelineBarrier(sourceStage, destinationStage, {}, {}, {}, imageMemoryBarrier);
+
+	endSingleTimeCommands(commandBuffer.get());
+}
+
+auto VulkanResources::createImage(uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage,
+								  vk::MemoryPropertyFlags properties)
+{
+	vk::ImageCreateInfo imageCreateInfo{{},vk::ImageType::e2D, vk::Format::eR8G8B8A8Srgb, {width, height, 1}, 1, 1,
+		vk::SampleCountFlagBits::e1, tiling, usage, vk::SharingMode::eExclusive,
+		{}, vk::ImageLayout::eUndefined};
+
+	auto textureImage = errorFatal(device->createImageUnique(imageCreateInfo), "couldn't create image"s);
+
+	auto memoryRequirements = device->getImageMemoryRequirements(textureImage.get());
+
+	vk::MemoryAllocateInfo memoryAllocateInfo{memoryRequirements.size,
+		findMemoryType(physicalDevice, memoryRequirements.memoryTypeBits, properties)};
+
+	auto textureImageMemory = errorFatal(device->allocateMemoryUnique(memoryAllocateInfo), "couldn't allocate texture image memory"s);
+	errorFatal(device->bindImageMemory(textureImage.get(), textureImageMemory.get(), 0), "couldn't bind image memory"s);
+
+	return std::make_tuple(std::move(textureImage), std::move(textureImageMemory));
+}
+
+auto VulkanResources::createTextureImage()
+{
+	int textureWidth{}, textureHeight{}, textureChannels{};
+	stbi_uc* pixels = stbi_load("textures/damn dont care.jpg", &textureWidth, &textureHeight,
+								&textureChannels, STBI_rgb_alpha);
+	vk::DeviceSize imageSize = textureWidth * textureHeight * 4;
+
+	errorFatal(pixels, "couldn't load texture image"s);
+
+	auto [stagingBuffer, stagingBufferMemory] = createStagingBuffer(pixels, imageSize);
+
+	stbi_image_free(pixels);
+
+	auto [textureImage, textureImageMemory] = createImage((uint32_t)textureWidth, (uint32_t)textureHeight, vk::Format::eR8G8B8A8Srgb, vk::ImageTiling::eOptimal,
+														  vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, vk::MemoryPropertyFlagBits::eDeviceLocal);
+
+	transitionImageLayout(textureImage.get(), vk::Format::eR8G8B8A8Srgb, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
+	copyBufferToImage(stagingBuffer.get(), textureImage.get(), (uint32_t)textureWidth, (uint32_t)textureHeight);
+	transitionImageLayout(textureImage.get(), vk::Format::eR8G8B8A8Srgb, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
+
+	return std::make_tuple(std::move(textureImage), std::move(textureImageMemory));
+}
+
+auto VulkanResources::createTextureImageView()
+{
+	return createImageView(textureImage.get(), vk::Format::eR8G8B8A8Srgb);
+}
+
+auto VulkanResources::createTextureSampler()
+{
+	auto maxAnisotropy = physicalDevice.getProperties().limits.maxSamplerAnisotropy;
+
+	vk::SamplerCreateInfo samplerCreateInfo{{}, vk::Filter::eNearest, vk::Filter::eLinear, vk::SamplerMipmapMode::eLinear, vk::SamplerAddressMode::eClampToEdge,
+		vk::SamplerAddressMode::eClampToEdge, vk::SamplerAddressMode::eClampToEdge, 0.0f, VK_TRUE, maxAnisotropy, VK_FALSE, vk::CompareOp::eAlways,
+		0.0f, 0.0f, vk::BorderColor::eIntOpaqueBlack, VK_FALSE};
+
+	return errorFatal(device->createSamplerUnique(samplerCreateInfo), "couldn't create texture sampler"s);
 }
 
 auto VulkanResources::createCommandBuffers()
@@ -631,7 +789,7 @@ auto VulkanResources::updateUniformBuffer(uint64_t frameIndex)
 	auto elapsedTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 	UniformBufferObject mvp{glm::ortho(-1.0f, 1.0f, 1.0f, -1.0f)};
 	mvp.mvp *= glm::lookAt(glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
-	mvp.mvp *= glm::rotate(glm::mat4(1.0f), elapsedTime * glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	mvp.mvp *= glm::rotate(glm::mat4(1.0f), elapsedTime * glm::radians(30.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 
 	auto data = errorFatal(device->mapMemory(uniformBuffersMemory[frameIndex].get(), 0, sizeof(mvp)), "couldn't map memory"s);
 	memcpy(data, &mvp, sizeof(mvp));
@@ -790,6 +948,15 @@ VulkanResources::VulkanResources()
 	shortBufferCommandPool = createCommandPool(vk::CommandPoolCreateFlagBits::eTransient);
 	formatPrint(std::cout, "Created short buffer command pool\n"sv);
 
+	std::tie(textureImage, textureImageMemory) = createTextureImage();
+	formatPrint(std::cout, "Created texture image\n"sv);
+
+	textureImageView = createTextureImageView();
+	formatPrint(std::cout, "Created texture image view\n"sv);
+
+	textureSampler = createTextureSampler();
+	formatPrint(std::cout, "Created texture sampler\n"sv);
+
 	std::tie(vertexBuffer, vertexBufferMemory) = createDeviceLocalBuffer(vertices, vk::BufferUsageFlagBits::eVertexBuffer);
 	formatPrint(std::cout, "Created vertex buffer\n"sv);
 
@@ -797,13 +964,13 @@ VulkanResources::VulkanResources()
 	formatPrint(std::cout, "Created index buffer\n"sv);
 
 	std::tie(uniformBuffers, uniformBuffersMemory) = createUniformBuffers();
-	formatPrint(std::cout, "Created {} uniform buffers"sv, uniformBuffers.size());
+	formatPrint(std::cout, "Created {} uniform buffers\n"sv, uniformBuffers.size());
 
 	descriptorPool = createDescriptorPool();
-	formatPrint(std::cout, "Created descriptor pool"sv);
+	formatPrint(std::cout, "Created descriptor pool\n"sv);
 
 	descriptorSets = createDescriptorSets();
-	formatPrint(std::cout, "Created descriptor sets"sv);
+	formatPrint(std::cout, "Created descriptor sets\n"sv);
 
 	commandBuffers = createCommandBuffers();
 	formatPrint(std::cout, "Allocated command buffer\n"sv);
