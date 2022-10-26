@@ -358,9 +358,9 @@ auto VulkanResources::createDevice(std::vector<char const*> const& validationLay
 	return errorFatal(physicalDevice.createDeviceUnique(deviceCreateInfo), "couldn't create device"s);
 }
 
-auto VulkanResources::createImageView(vk::Image image, vk::Format format)
+auto VulkanResources::createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags)
 {
-	vk::ImageSubresourceRange subresourceRange{vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1};
+	vk::ImageSubresourceRange subresourceRange{aspectFlags, 0, 1, 0, 1};
 	vk::ImageViewCreateInfo viewCreateInfo{{}, image, vk::ImageViewType::e2D, format,
 										   {vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity,vk::ComponentSwizzle::eIdentity,vk::ComponentSwizzle::eIdentity},
 											subresourceRange};
@@ -411,7 +411,7 @@ auto VulkanResources::createSwapchainImageViews(std::vector<vk::Image> const& sw
 		vk::ImageViewCreateInfo imageViewCreateInfo({}, image, vk::ImageViewType::e2D, swapchainImageFormat,
 													{vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity,vk::ComponentSwizzle::eIdentity,vk::ComponentSwizzle::eIdentity},
 													subresourceRange);
-		result.push_back(createImageView(image, swapchainImageFormat));
+		result.push_back(createImageView(image, swapchainImageFormat, vk::ImageAspectFlagBits::eColor));
 	}
 
 	return result;
@@ -424,18 +424,51 @@ auto VulkanResources::createShaderModule(std::vector<char> const& shaderCode)
 	return errorFatal(device->createShaderModuleUnique(shaderModuleCreateInfo), "couldn't create shader module"s);
 }
 
+auto VulkanResources::findSupportedFormat(std::vector<vk::Format> const& candidateFormats, vk::ImageTiling tiling, vk::FormatFeatureFlags features)
+{
+	for (auto candidate : candidateFormats)
+	{
+		auto properties = physicalDevice.getFormatProperties(candidate);
+
+		if (tiling == vk::ImageTiling::eLinear && (properties.linearTilingFeatures & features) == features)
+		{
+			return candidate;
+		}
+		else if (tiling == vk::ImageTiling::eOptimal && (properties.optimalTilingFeatures & features) == features)
+		{
+			return candidate;
+		}
+	}
+	errorFatal(false, "couldn't find supported format"s);
+	return vk::Format{};
+}
+
+auto VulkanResources::findDepthFormat()
+{
+	return findSupportedFormat({vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint}, vk::ImageTiling::eOptimal,
+							   vk::FormatFeatureFlagBits::eDepthStencilAttachment);
+}
+
 auto VulkanResources::createRenderPass(vk::Format swapchainImageFormat)
 {
 	vk::AttachmentDescription colorAttachment{{}, swapchainImageFormat, vk::SampleCountFlagBits::e1, vk::AttachmentLoadOp::eClear, vk::AttachmentStoreOp::eStore,
-	vk::AttachmentLoadOp::eDontCare, vk::AttachmentStoreOp::eDontCare, vk::ImageLayout::eUndefined, vk::ImageLayout::ePresentSrcKHR};
+		vk::AttachmentLoadOp::eDontCare, vk::AttachmentStoreOp::eDontCare, vk::ImageLayout::eUndefined, vk::ImageLayout::ePresentSrcKHR};
 
 	vk::AttachmentReference colorAttachmentRef{0, vk::ImageLayout::eColorAttachmentOptimal};
-	vk::SubpassDescription subpass{{}, vk::PipelineBindPoint::eGraphics, nullptr, colorAttachmentRef};
 
-	vk::SubpassDependency subpassDependency{VK_SUBPASS_EXTERNAL, 0, vk::PipelineStageFlagBits::eColorAttachmentOutput,
-											vk::PipelineStageFlagBits::eColorAttachmentOutput, vk::AccessFlagBits{0}, vk::AccessFlagBits::eColorAttachmentWrite};
+	vk::AttachmentDescription depthAttachment{{}, findDepthFormat(), vk::SampleCountFlagBits::e1, vk::AttachmentLoadOp::eClear, vk::AttachmentStoreOp::eDontCare,
+		vk::AttachmentLoadOp::eDontCare, vk::AttachmentStoreOp::eDontCare, vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal};
 
-	vk::RenderPassCreateInfo renderPassCreateInfo{{}, colorAttachment, subpass, subpassDependency};
+	vk::AttachmentReference depthAttachmentRef{1, vk::ImageLayout::eDepthStencilAttachmentOptimal};
+
+	vk::SubpassDescription subpass{{}, vk::PipelineBindPoint::eGraphics, nullptr, colorAttachmentRef, {}, &depthAttachmentRef};
+
+	vk::SubpassDependency subpassDependency{VK_SUBPASS_EXTERNAL, 0, vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests,
+		vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests,
+		vk::AccessFlagBits{0}, vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentWrite};
+
+	std::vector attachments{colorAttachment, depthAttachment};
+	vk::RenderPassCreateInfo renderPassCreateInfo{{}, attachments, subpass, subpassDependency};
 	return errorFatal(device->createRenderPassUnique(renderPassCreateInfo), "couldn't create render pass"s);
 }
 
@@ -498,23 +531,27 @@ auto VulkanResources::createGraphicsPipeline(vk::Extent2D viewportExtent, vk::Re
 		vk::BlendFactor::eOne, vk::BlendFactor::eZero, vk::BlendOp::eAdd,
 		vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA};
 
+	vk::PipelineDepthStencilStateCreateInfo depthStencilCreateInfo{{}, VK_TRUE, VK_TRUE, vk::CompareOp::eLess, VK_FALSE, VK_FALSE, {}, {}, 0.0f, 1.0f};
+
 	vk::PipelineColorBlendStateCreateInfo colorBlendStateCreateInfo{{}, VK_FALSE, vk::LogicOp::eCopy, colorBlendAttachmentState, {0.0f, 0.0f, 0.0f, 0.0f}};
 
 	vk::GraphicsPipelineCreateInfo pipelineCreateInfo{{}, shaderStages, &vertexInputStateCreateInfo, &inputAssemblyStateCreateInfo, nullptr,
-		&viewportStateCreateInfo, &rasterizationStateCreateInfo, &multisampleStateCreateInfo, nullptr, &colorBlendStateCreateInfo, &dynamicStateCreateInfo,
-		pipelineLayout.get(), renderPass, 0};
+		&viewportStateCreateInfo, &rasterizationStateCreateInfo, &multisampleStateCreateInfo, &depthStencilCreateInfo, &colorBlendStateCreateInfo,
+		&dynamicStateCreateInfo, pipelineLayout.get(), renderPass, 0};
 	auto pipeline = errorFatal(device->createGraphicsPipelineUnique(nullptr, pipelineCreateInfo), "couldn't create graphics pipeline"s);
 	return pipeline;
 }
 
-auto VulkanResources::createFramebuffers(std::vector<vk::UniqueImageView> const& swapchainImageViews, vk::Extent2D const& swapchainExtent,
-										 vk::RenderPass renderPass)
+auto VulkanResources::createFramebuffers(SwapchainResources const& swapchainResources)
 {
 	std::vector<vk::UniqueFramebuffer> framebuffers;
 
-	for (size_t i = 0; i < swapchainImageViews.size(); i++)
+	for (size_t i = 0; i < swapchainResources.swapchainImageViews.size(); i++)
 	{
-		vk::FramebufferCreateInfo framebufferCreateInfo{{}, renderPass, swapchainImageViews[i].get(), swapchainExtent.width, swapchainExtent.height, 1};
+		std::vector attachments{swapchainResources.swapchainImageViews[i].get(), swapchainResources.depthImageView.get()};
+
+		vk::FramebufferCreateInfo framebufferCreateInfo{{}, swapchainResources.renderPass.get(), attachments, swapchainResources.swapchainExtent.width,
+			swapchainResources.swapchainExtent.height, 1};
 		framebuffers.push_back(errorFatal(device->createFramebufferUnique(framebufferCreateInfo), "couldn't create framebuffer"s));
 	}
 	return framebuffers;
@@ -678,6 +715,11 @@ auto VulkanResources::copyBufferToImage(vk::Buffer buffer, vk::Image image, uint
 	endSingleTimeCommands(commandBuffer.get());
 }
 
+auto hasStencilComponent(vk::Format format)
+{
+	return format == vk::Format::eD32SfloatS8Uint || format == vk::Format::eD24UnormS8Uint;
+}
+
 auto VulkanResources::transitionImageLayout(vk::Image image, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout)
 {
 	auto commandBuffer = beginSingleTimeCommands();
@@ -686,6 +728,20 @@ auto VulkanResources::transitionImageLayout(vk::Image image, vk::Format format, 
 	vk::AccessFlags dstAccessMask;
 	vk::PipelineStageFlags sourceStage;
 	vk::PipelineStageFlags destinationStage;
+	vk::ImageAspectFlags aspectMask;
+	if (newLayout == vk::ImageLayout::eDepthStencilAttachmentOptimal)
+	{
+		aspectMask = vk::ImageAspectFlagBits::eDepth;
+		if (hasStencilComponent(format))
+		{
+			aspectMask |= vk::ImageAspectFlagBits::eStencil;
+		}
+	}
+	else
+	{
+		aspectMask = vk::ImageAspectFlagBits::eColor;
+	}
+
 	if (oldLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::eTransferDstOptimal)
 	{
 		srcAccessMask = {};
@@ -702,12 +758,20 @@ auto VulkanResources::transitionImageLayout(vk::Image image, vk::Format format, 
 		sourceStage = vk::PipelineStageFlagBits::eTransfer;
 		destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
 	}
+	else if (oldLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::eDepthStencilAttachmentOptimal)
+	{
+		srcAccessMask = {};
+		dstAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentRead | vk::AccessFlagBits::eDepthStencilAttachmentWrite;
+
+		sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
+		destinationStage = vk::PipelineStageFlagBits::eEarlyFragmentTests;
+	}
 	else
 	{
 		errorFatal(false, "unknown image layout transition"s);
 	}
 
-	vk::ImageSubresourceRange imageSubresourceRange{vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1};
+	vk::ImageSubresourceRange imageSubresourceRange{aspectMask, 0, 1, 0, 1};
 	vk::ImageMemoryBarrier imageMemoryBarrier{srcAccessMask, dstAccessMask, oldLayout, newLayout, VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
 		image, imageSubresourceRange};
 
@@ -719,7 +783,7 @@ auto VulkanResources::transitionImageLayout(vk::Image image, vk::Format format, 
 auto VulkanResources::createImage(uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage,
 								  vk::MemoryPropertyFlags properties)
 {
-	vk::ImageCreateInfo imageCreateInfo{{},vk::ImageType::e2D, vk::Format::eR8G8B8A8Srgb, {width, height, 1}, 1, 1,
+	vk::ImageCreateInfo imageCreateInfo{{},vk::ImageType::e2D, format, {width, height, 1}, 1, 1,
 		vk::SampleCountFlagBits::e1, tiling, usage, vk::SharingMode::eExclusive,
 		{}, vk::ImageLayout::eUndefined};
 
@@ -761,7 +825,7 @@ auto VulkanResources::createTextureImage()
 
 auto VulkanResources::createTextureImageView()
 {
-	return createImageView(textureImage.get(), vk::Format::eR8G8B8A8Srgb);
+	return createImageView(textureImage.get(), vk::Format::eR8G8B8A8Srgb, vk::ImageAspectFlagBits::eColor);
 }
 
 auto VulkanResources::createTextureSampler()
@@ -773,6 +837,19 @@ auto VulkanResources::createTextureSampler()
 		0.0f, 0.0f, vk::BorderColor::eIntOpaqueBlack, VK_FALSE};
 
 	return errorFatal(device->createSamplerUnique(samplerCreateInfo), "couldn't create texture sampler"s);
+}
+
+auto VulkanResources::createDepthResources(SwapchainResources const& swapchainResources)
+{
+	auto depthFormat = findDepthFormat();
+	auto [depthImage, depthMemory] = createImage(swapchainResources.swapchainExtent.width, swapchainResources.swapchainExtent.height,
+												 depthFormat, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment, vk::MemoryPropertyFlagBits::eDeviceLocal);
+
+	auto depthImageView = createImageView(depthImage.get(), depthFormat, vk::ImageAspectFlagBits::eDepth);
+
+	transitionImageLayout(depthImage.get(), depthFormat, vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal);
+
+	return std::make_tuple(std::move(depthImage), std::move(depthMemory), std::move(depthImageView));
 }
 
 auto VulkanResources::createCommandBuffers()
@@ -787,7 +864,7 @@ auto VulkanResources::updateUniformBuffer(uint64_t frameIndex)
 	auto currentTime = std::chrono::high_resolution_clock::now();
 
 	auto elapsedTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-	UniformBufferObject mvp{glm::ortho(-1.0f, 1.0f, 1.0f, -1.0f)};
+	UniformBufferObject mvp{glm::ortho(-1.0f, 1.0f, 1.0f, -1.0f, 0.0f, 100.0f)};
 	mvp.mvp *= glm::lookAt(glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
 	mvp.mvp *= glm::rotate(glm::mat4(1.0f), elapsedTime * glm::radians(30.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 
@@ -803,9 +880,9 @@ auto VulkanResources::recordCommandBuffer(uint32_t imageIndex, SwapchainResource
 
 	errorFatal(commandBuffer.begin(commandBufferBeginInfo) == vk::Result::eSuccess, "couldn't begin command buffer"s);
 
-	vk::ClearValue clearColor{vk::ClearColorValue{std::array{0.0f, 0.0f, 0.0f, 1.0f}}};
+	std::vector<vk::ClearValue> clearValues{vk::ClearColorValue{std::array{0.0f, 0.0f, 0.0f, 1.0f}}, vk::ClearDepthStencilValue{1.0f, 0}};
 	vk::RenderPassBeginInfo renderPassBeginInfo{swapchainResources.renderPass.get(), swapchainResources.swapchainFramebuffers[imageIndex].get(),
-												{{0, 0}, swapchainResources.swapchainExtent}, clearColor};
+												{{0, 0}, swapchainResources.swapchainExtent}, clearValues};
 
 	commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
 
@@ -861,7 +938,9 @@ SwapchainResources::SwapchainResources(VulkanResources& vulkan, RenderingPipelin
 	renderPass = vulkan.createRenderPass(swapchainImageFormat);
 	formatPrint(std::cout, "Created renderpass\n"sv);
 
-	swapchainFramebuffers = vulkan.createFramebuffers(swapchainImageViews, swapchainExtent, renderPass.get());
+	std::tie(depthImage, depthImageMemory, depthImageView) = vulkan.createDepthResources(*this);
+
+	swapchainFramebuffers = vulkan.createFramebuffers(*this);
 	formatPrint(std::cout, "Created {} framebuffers\n"sv, swapchainFramebuffers.size());
 
 	graphicsPipelines = RenderingPipelines(vulkan, swapchainExtent, renderPass.get(), initialType);
@@ -940,13 +1019,13 @@ VulkanResources::VulkanResources()
 	pipelineLayout = createGraphicsPipelineLayout();
 	formatPrint(std::cout, "Created graphics pipeline layout\n"sv);
 
+	shortBufferCommandPool = createCommandPool(vk::CommandPoolCreateFlagBits::eTransient);
+	formatPrint(std::cout, "Created short buffer command pool\n"sv);
+
 	swapchainResources = std::make_unique<SwapchainResources>(*this, RenderingPipelines::Type::Main);
 
 	commandPool = createCommandPool(vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
 	formatPrint(std::cout, "Created command pool\n"sv);
-
-	shortBufferCommandPool = createCommandPool(vk::CommandPoolCreateFlagBits::eTransient);
-	formatPrint(std::cout, "Created short buffer command pool\n"sv);
 
 	std::tie(textureImage, textureImageMemory) = createTextureImage();
 	formatPrint(std::cout, "Created texture image\n"sv);

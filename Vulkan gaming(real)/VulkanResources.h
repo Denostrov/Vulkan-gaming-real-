@@ -47,6 +47,9 @@ struct SwapchainResources
 	vk::Extent2D swapchainExtent;
 	std::vector<vk::UniqueImageView> swapchainImageViews;
 	vk::UniqueRenderPass renderPass;
+	vk::UniqueImage depthImage;
+	vk::UniqueDeviceMemory depthImageMemory;
+	vk::UniqueImageView depthImageView;
 	std::vector<vk::UniqueFramebuffer> swapchainFramebuffers;
 	RenderingPipelines graphicsPipelines;
 };
@@ -94,10 +97,10 @@ private:
 	vk::Queue presentationQueue;
 	vk::UniqueDescriptorSetLayout descriptorSetLayout;
 	vk::UniquePipelineLayout pipelineLayout;
+	vk::UniqueCommandPool shortBufferCommandPool;
 	std::unique_ptr<SwapchainResources> swapchainResources;
 	OldResourceQueue<SwapchainResources> oldSwapchainResources;
 	vk::UniqueCommandPool commandPool;
-	vk::UniqueCommandPool shortBufferCommandPool;
 	vk::UniqueImage textureImage;
 	vk::UniqueDeviceMemory textureImageMemory;
 	vk::UniqueImageView textureImageView;
@@ -123,11 +126,14 @@ private:
 	auto rateDeviceScore(vk::PhysicalDevice const& physicalDevice, std::vector<char const*> const& requiredPhysicalDeviceExtensions);
 	auto choosePhysicalDevice(std::vector<char const*> const& requiredPhysicalDeviceExtensions);
 	auto createDevice(std::vector<char const*> const& validationLayers, std::vector<char const*> const& requiredPhysicalDeviceExtensions);
-	auto createImageView(vk::Image image, vk::Format format);
+	auto createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags);
 	auto createSwapchain(SwapchainSupportDetails const& swapchainSupportDetails, vk::SwapchainKHR oldSwapchain = nullptr);
 	auto createSwapchainImageViews(std::vector<vk::Image> const& swapchainImages, vk::Format swapchainImageFormat);
+	auto findSupportedFormat(std::vector<vk::Format> const& candidateFormats, vk::ImageTiling tiling, vk::FormatFeatureFlags);
+	auto findDepthFormat();
+	auto createDepthResources(SwapchainResources const& swapchainResources);
 	auto createRenderPass(vk::Format swapchainImageFormat);
-	auto createFramebuffers(std::vector<vk::UniqueImageView> const& swapchainImageViews, vk::Extent2D const& swapchainExtent, vk::RenderPass renderPass);
+	auto createFramebuffers(SwapchainResources const& swapchainResources);
 	auto createShaderModule(std::vector<char> const& shaderCode);
 	auto createDescriptorSetLayout();
 	auto createGraphicsPipelineLayout();

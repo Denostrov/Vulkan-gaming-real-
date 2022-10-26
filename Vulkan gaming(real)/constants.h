@@ -5,6 +5,7 @@
 #define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
 #include <vulkan/vulkan.hpp>
 #include <GLFW/glfw3.h>
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -20,7 +21,7 @@ static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 
 struct Vertex
 {
-	glm::vec2 position;
+	glm::vec3 position;
 	glm::vec3 color;
 	glm::vec2 texCoord;
 
@@ -32,7 +33,7 @@ struct Vertex
 	static auto getAttributeDescriptions()
 	{
 		std::vector<vk::VertexInputAttributeDescription> attributeDescriptions{
-			{0, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, position)},
+			{0, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, position)},
 			{1, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, color)},
 			{2, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, texCoord)}
 		};
@@ -46,10 +47,10 @@ struct UniformBufferObject
 };
 
 static constexpr std::array<Vertex, 4> vertices = {
-	Vertex{{-0.5f, -0.5f},	{1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-	Vertex{{0.5f, -0.5f},	{0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-	Vertex{{-0.5f, 0.5f},	{0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-	Vertex{{0.5f, 0.5f}, {1.0f, 1.0f, 0.0f}, {1.0f, 1.0f}}
+	Vertex{{-0.5f, -0.5f, 0.0f},	{1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+	Vertex{{0.5f, -0.5f, 0.0f},	{0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+	Vertex{{-0.5f, 0.5f, 0.0f},	{0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+	Vertex{{0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 0.0f}, {1.0f, 1.0f}}
 };
 
 static constexpr std::array<uint16_t, 4> indices = {0, 1, 2, 3};
