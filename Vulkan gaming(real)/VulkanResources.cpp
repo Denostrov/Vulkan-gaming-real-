@@ -548,7 +548,7 @@ auto VulkanResources::createFramebuffers(SwapchainResources const& swapchainReso
 
 	for (size_t i = 0; i < swapchainResources.swapchainImageViews.size(); i++)
 	{
-		std::vector attachments{swapchainResources.swapchainImageViews[i].get(), swapchainResources.depthImageView.get()};
+		std::vector attachments{swapchainResources.swapchainImageViews[i].get(), swapchainResources.depthImageViews[i].get()};
 
 		vk::FramebufferCreateInfo framebufferCreateInfo{{}, swapchainResources.renderPass.get(), attachments, swapchainResources.swapchainExtent.width,
 			swapchainResources.swapchainExtent.height, 1};
@@ -842,14 +842,24 @@ auto VulkanResources::createTextureSampler()
 auto VulkanResources::createDepthResources(SwapchainResources const& swapchainResources)
 {
 	auto depthFormat = findDepthFormat();
-	auto [depthImage, depthMemory] = createImage(swapchainResources.swapchainExtent.width, swapchainResources.swapchainExtent.height,
-												 depthFormat, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment, vk::MemoryPropertyFlagBits::eDeviceLocal);
+	std::vector<vk::UniqueImage> depthImages;
+	std::vector<vk::UniqueDeviceMemory> depthImagesMemory;
+	std::vector<vk::UniqueImageView> depthImageViews;
 
-	auto depthImageView = createImageView(depthImage.get(), depthFormat, vk::ImageAspectFlagBits::eDepth);
+	for (uint64_t i = 0; i < swapchainResources.swapchainImages.size(); i++)
+	{
+		auto [depthImage, depthMemory] = createImage(swapchainResources.swapchainExtent.width, swapchainResources.swapchainExtent.height,
+													 depthFormat, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment, vk::MemoryPropertyFlagBits::eDeviceLocal);
 
-	transitionImageLayout(depthImage.get(), depthFormat, vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal);
+		auto depthImageView = createImageView(depthImage.get(), depthFormat, vk::ImageAspectFlagBits::eDepth);
 
-	return std::make_tuple(std::move(depthImage), std::move(depthMemory), std::move(depthImageView));
+		transitionImageLayout(depthImage.get(), depthFormat, vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal);
+		depthImages.push_back(std::move(depthImage));
+		depthImagesMemory.push_back(std::move(depthMemory));
+		depthImageViews.push_back(std::move(depthImageView));
+	}
+
+	return std::make_tuple(std::move(depthImages), std::move(depthImagesMemory), std::move(depthImageViews));
 }
 
 auto VulkanResources::createCommandBuffers()
@@ -938,7 +948,7 @@ SwapchainResources::SwapchainResources(VulkanResources& vulkan, RenderingPipelin
 	renderPass = vulkan.createRenderPass(swapchainImageFormat);
 	formatPrint(std::cout, "Created renderpass\n"sv);
 
-	std::tie(depthImage, depthImageMemory, depthImageView) = vulkan.createDepthResources(*this);
+	std::tie(depthImages, depthImagesMemory, depthImageViews) = vulkan.createDepthResources(*this);
 
 	swapchainFramebuffers = vulkan.createFramebuffers(*this);
 	formatPrint(std::cout, "Created {} framebuffers\n"sv, swapchainFramebuffers.size());

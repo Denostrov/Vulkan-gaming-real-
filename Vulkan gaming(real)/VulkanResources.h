@@ -47,9 +47,9 @@ struct SwapchainResources
 	vk::Extent2D swapchainExtent;
 	std::vector<vk::UniqueImageView> swapchainImageViews;
 	vk::UniqueRenderPass renderPass;
-	vk::UniqueImage depthImage;
-	vk::UniqueDeviceMemory depthImageMemory;
-	vk::UniqueImageView depthImageView;
+	std::vector<vk::UniqueImage> depthImages;
+	std::vector<vk::UniqueDeviceMemory> depthImagesMemory;
+	std::vector<vk::UniqueImageView> depthImageViews;
 	std::vector<vk::UniqueFramebuffer> swapchainFramebuffers;
 	RenderingPipelines graphicsPipelines;
 };
