@@ -178,6 +178,8 @@ auto VulkanResources::rateDeviceScore(vk::PhysicalDevice const& physicalDevice,
 	score += physicalDeviceProperties.limits.maxFramebufferHeight;
 	score += physicalDeviceProperties.limits.maxImageArrayLayers;
 	score += physicalDeviceProperties.limits.maxVertexInputBindings;
+	score += physicalDeviceProperties.limits.maxMemoryAllocationCount;
+	score += physicalDeviceProperties.limits.maxSamplerAllocationCount;
 
 	if (score > std::numeric_limits<uint32_t>::max())
 	{
@@ -892,13 +894,11 @@ auto VulkanResources::updateUniformBuffer(uint64_t frameIndex)
 	auto currentTime = std::chrono::high_resolution_clock::now();
 
 	auto elapsedTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-	UniformBufferObject mvp{glm::ortho(-1.0f, 1.0f, 1.0f, -1.0f, 0.0f, 100.0f)};
-	mvp.mvp *= glm::lookAt(glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
-	mvp.mvp *= glm::translate(glm::mat4(1.0f), glm::vec3(-0.5f, 0.0f, 0.0f));
-	mvp.mvp *= glm::rotate(glm::mat4(1.0f), elapsedTime * glm::radians(30.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	UniformBufferObject vp{glm::ortho(-1.0f, 1.0f, 1.0f, -1.0f, 0.0f, 100.0f)};
+	vp.vp *= glm::lookAt(glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
 
-	auto data = errorFatal(device->mapMemory(uniformBuffersMemory[frameIndex].get(), 0, sizeof(mvp)), "couldn't map memory"s);
-	memcpy(data, &mvp, sizeof(mvp));
+	auto data = errorFatal(device->mapMemory(uniformBuffersMemory[frameIndex].get(), 0, sizeof(vp)), "couldn't map memory"s);
+	memcpy(data, &vp, sizeof(vp));
 	device->unmapMemory(uniformBuffersMemory[frameIndex].get());
 }
 
@@ -908,21 +908,16 @@ auto VulkanResources::updateInstanceBuffer(uint64_t frameIndex)
 	auto currentTime = std::chrono::high_resolution_clock::now();
 
 	auto elapsedTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-	glm::mat4 vp{glm::ortho(-1.0f, 1.0f, 1.0f, -1.0f, 0.0f, 100.0f)};
-	vp *= glm::lookAt(glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
 
-	InstanceVertex instanceVertex{vp, glm::vec4(0.0f, 0.0f, 1.0f, 1.0f)};
-	auto data = static_cast<InstanceVertex*>(errorFatal(device->mapMemory(instanceVertexBufferMemory[frameIndex].get(),
-																		 0, sizeof(InstanceVertex) * 64), "couldn't map memory"s));
-	for (uint32_t i = 0; i < 64; i++)
+	if (quadComponents.size() > 0)
 	{
-		instanceVertex.mvp = vp * glm::translate(glm::mat4(1.0f), glm::vec3(-0.75f + (xorshift32c(i + 2048) % 128) / 127.0f * 1.5f, -0.75f + (xorshift32c(i + 255) % 128) / 127.0f * 1.5f, (xorshift32c(i + 1) % 128) / 127.0f));
-		instanceVertex.mvp *= glm::rotate(glm::mat4(1.0f), elapsedTime * glm::radians(float(xorshift32c(i + 1) % 60)), glm::vec3(0.0f, 0.0f, 1.0f));
-		instanceVertex.mvp *= glm::scale(glm::mat4(1.0f), glm::vec3((xorshift32c(i + 1) % 8 + 2.0f) / 16.0f, (xorshift32c(i + 2) % 8 + 2.0f) / 16.0f, 1.0f));
-		memcpy(data, &instanceVertex, sizeof(instanceVertex));
-		data++;
+		auto data = static_cast<InstanceVertex*>(errorFatal(device->mapMemory(instanceVertexBufferMemory[frameIndex].get(),
+																			  0, sizeof(InstanceVertex) * quadComponents.size()), "couldn't map memory"s));
+
+		memcpy(data, quadComponents.data(), sizeof(InstanceVertex) * quadComponents.size());
+
+		device->unmapMemory(instanceVertexBufferMemory[frameIndex].get());
 	}
-	device->unmapMemory(instanceVertexBufferMemory[frameIndex].get());
 }
 
 auto VulkanResources::recordCommandBuffer(uint32_t imageIndex, SwapchainResources const& swapchainResources)
@@ -955,7 +950,7 @@ auto VulkanResources::recordCommandBuffer(uint32_t imageIndex, SwapchainResource
 
 	commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout.get(), 0, descriptorSets[currentFrame], {});
 
-	commandBuffer.drawIndexed(static_cast<uint32_t>(indices.size()), 64, 0, 0, 0);
+	commandBuffer.drawIndexed(static_cast<uint32_t>(indices.size()), static_cast<uint32_t>(quadComponents.size()), 0, 0, 0);
 
 	commandBuffer.endRenderPass();
 
@@ -1221,4 +1216,9 @@ void VulkanResources::toggleWireframeMode()
 			swapchainResources->graphicsPipelines.switchPipeline(RenderingPipelines::Type::Wireframe);
 		}
 	}
+}
+
+std::size_t VulkanResources::addQuad(QuadComponent const& quad, std::size_t* parentIndex)
+{
+	return quadComponents.add(quad, parentIndex);
 }

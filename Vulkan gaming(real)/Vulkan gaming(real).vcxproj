@@ -151,6 +151,7 @@
   <ItemGroup>
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="QuadComponent.cpp" />
     <ClCompile Include="VulkanResources.cpp" />
     <ClCompile Include="Window.cpp" />
   </ItemGroup>
@@ -159,7 +160,9 @@
     <ClInclude Include="Game.h" />
     <ClInclude Include="helpers.h" />
     <ClInclude Include="logging.h" />
+    <ClInclude Include="ObjectPool.h" />
     <ClInclude Include="print.h" />
+    <ClInclude Include="QuadComponent.h" />
     <ClInclude Include="VulkanResources.h" />
     <ClInclude Include="Window.h" />
   </ItemGroup>

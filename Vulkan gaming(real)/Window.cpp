@@ -21,6 +21,11 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 	{
 		vulkan->toggleWireframeMode();
 	}
+	else if (key == GLFW_KEY_F4 && action == GLFW_PRESS)
+	{
+		std::size_t temp = 0;
+		vulkan->addQuad(QuadComponent({0.0f, 0.0f, 0.0f}, 1.0f, {0.0f, 0.0f}, {1.0f, 1.0f}), &temp);
+	}
 }
 
 WindowContext::WindowContext()

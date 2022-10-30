@@ -43,7 +43,7 @@ struct Vertex
 
 struct InstanceVertex
 {
-	glm::mat4 mvp;
+	glm::vec4 positionScale;
 	glm::vec4 texOffsetScale;
 
 	static auto getBindingDescription()
@@ -55,10 +55,7 @@ struct InstanceVertex
 	{
 		std::vector<vk::VertexInputAttributeDescription> attributeDescriptions{
 			{3, 1, vk::Format::eR32G32B32A32Sfloat, 0},
-			{4, 1, vk::Format::eR32G32B32A32Sfloat, sizeof(float) * 4},
-			{5, 1, vk::Format::eR32G32B32A32Sfloat, sizeof(float) * 8},
-			{6, 1, vk::Format::eR32G32B32A32Sfloat, sizeof(float) * 12},
-			{7, 1, vk::Format::eR32G32B32A32Sfloat, sizeof(float) * 16}
+			{4, 1, vk::Format::eR32G32B32A32Sfloat, sizeof(float) * 4}
 		};
 		return attributeDescriptions;
 	}
@@ -66,7 +63,7 @@ struct InstanceVertex
 
 struct UniformBufferObject
 {
-	glm::mat4 mvp;
+	glm::mat4 vp;
 };
 
 static constexpr std::array<Vertex, 4> vertices = {

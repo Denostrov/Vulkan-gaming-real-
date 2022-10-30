@@ -30,6 +30,9 @@
     <ClCompile Include="Window.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="QuadComponent.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="print.h">
@@ -52,6 +55,12 @@
     </ClInclude>
     <ClInclude Include="logging.h">
       <Filter>Header Files\helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="QuadComponent.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ObjectPool.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
