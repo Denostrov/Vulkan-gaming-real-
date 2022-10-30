@@ -107,6 +107,8 @@ private:
 	vk::UniqueSampler textureSampler;
 	vk::UniqueBuffer vertexBuffer;
 	vk::UniqueDeviceMemory vertexBufferMemory;
+	std::vector<vk::UniqueBuffer> instanceVertexBuffer;
+	std::vector<vk::UniqueDeviceMemory> instanceVertexBufferMemory;
 	vk::UniqueBuffer indexBuffer;
 	vk::UniqueDeviceMemory indexBufferMemory;
 	std::vector<vk::UniqueBuffer> uniformBuffers;
@@ -151,6 +153,8 @@ private:
 	auto createStagingBuffer(Data* data, vk::DeviceSize size);
 	template<class Data>
 	auto createDeviceLocalBuffer(Data const& data, vk::BufferUsageFlags bufferUsage);
+	auto createHostVisibleBuffer(vk::DeviceSize size, vk::BufferUsageFlags bufferUsage);
+	auto createInstanceVertexBuffers();
 
 	auto copyBufferToImage(vk::Buffer buffer, vk::Image image, uint32_t width, uint32_t height);
 	auto transitionImageLayout(vk::Image image, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout);
@@ -160,7 +164,8 @@ private:
 	auto createTextureSampler();
 	auto createCommandBuffers();
 	auto updateUniformBuffer(uint64_t frameIndex);
-	auto recordCommandBuffer(uint32_t imageIndex, SwapchainResources const& swapchainResources, vk::Buffer vertexBuffer);
+	auto updateInstanceBuffer(uint64_t frameIndex);
+	auto recordCommandBuffer(uint32_t imageIndex, SwapchainResources const& swapchainResources);
 	auto createSyncObjects();
 	void submitImage(SwapchainResources const& swapchain, uint32_t imageIndex, bool isSwapchainRetired = false);
 	void recreateSwapchainResources();

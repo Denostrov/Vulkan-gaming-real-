@@ -29,3 +29,20 @@ inline std::vector<char> readFile(std::string const& filename)
 
 	return buffer;
 }
+
+inline uint32_t xorshift32(uint32_t& state)
+{
+	uint32_t res = state;
+	res ^= res << 13;
+	res ^= res >> 17;
+	res ^= res << 5;
+	return state = res;
+}
+
+inline uint32_t xorshift32c(uint32_t state)
+{
+	state ^= state << 13;
+	state ^= state >> 17;
+	state ^= state << 5;
+	return state;
+}

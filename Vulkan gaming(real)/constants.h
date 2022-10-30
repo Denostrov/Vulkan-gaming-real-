@@ -41,6 +41,29 @@ struct Vertex
 	}
 };
 
+struct InstanceVertex
+{
+	glm::mat4 mvp;
+	glm::vec4 texOffsetScale;
+
+	static auto getBindingDescription()
+	{
+		vk::VertexInputBindingDescription bindingDescription{1, sizeof(InstanceVertex), vk::VertexInputRate::eInstance};
+		return bindingDescription;
+	}
+	static auto getAttributeDescriptions()
+	{
+		std::vector<vk::VertexInputAttributeDescription> attributeDescriptions{
+			{3, 1, vk::Format::eR32G32B32A32Sfloat, 0},
+			{4, 1, vk::Format::eR32G32B32A32Sfloat, sizeof(float) * 4},
+			{5, 1, vk::Format::eR32G32B32A32Sfloat, sizeof(float) * 8},
+			{6, 1, vk::Format::eR32G32B32A32Sfloat, sizeof(float) * 12},
+			{7, 1, vk::Format::eR32G32B32A32Sfloat, sizeof(float) * 16}
+		};
+		return attributeDescriptions;
+	}
+};
+
 struct UniformBufferObject
 {
 	glm::mat4 mvp;

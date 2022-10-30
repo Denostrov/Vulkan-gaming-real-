@@ -510,9 +510,11 @@ auto VulkanResources::createGraphicsPipeline(vk::Extent2D viewportExtent, vk::Re
 
 	vk::PipelineDynamicStateCreateInfo dynamicStateCreateInfo{{}, dynamicStates};
 
-	std::vector<vk::VertexInputBindingDescription> vertexInputBindingDescriptions = {Vertex::getBindingDescription()};
-	std::vector<vk::VertexInputAttributeDescription> vertexInputAttributeDescriptions = Vertex::getAttributeDescriptions();
-	vk::PipelineVertexInputStateCreateInfo vertexInputStateCreateInfo{{}, vertexInputBindingDescriptions, vertexInputAttributeDescriptions};
+	std::vector<vk::VertexInputBindingDescription> vertexInputBindingDescriptions = {Vertex::getBindingDescription(), InstanceVertex::getBindingDescription()};
+	auto totalInputAttributeDescriptions = Vertex::getAttributeDescriptions();
+	auto instanceInputAttributeDescriptions = InstanceVertex::getAttributeDescriptions();
+	totalInputAttributeDescriptions.insert(totalInputAttributeDescriptions.end(), instanceInputAttributeDescriptions.begin(), instanceInputAttributeDescriptions.end());
+	vk::PipelineVertexInputStateCreateInfo vertexInputStateCreateInfo{{}, vertexInputBindingDescriptions, totalInputAttributeDescriptions};
 
 	vk::PipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo{{}, vk::PrimitiveTopology::eTriangleStrip, VK_FALSE};
 
@@ -659,7 +661,7 @@ auto VulkanResources::createDescriptorSets()
 
 	for (uint64_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
-		vk::DescriptorBufferInfo bufferInfo{uniformBuffers[i].get(), 0, sizeof(UniformBufferObject)};
+		vk::DescriptorBufferInfo bufferInfo{uniformBuffers[i].get(), 0, VK_WHOLE_SIZE};
 
 		vk::DescriptorImageInfo imageInfo{textureSampler.get(), textureImageView.get(), vk::ImageLayout::eShaderReadOnlyOptimal};
 
@@ -701,6 +703,22 @@ auto VulkanResources::createDeviceLocalBuffer(Data const& arr, vk::BufferUsageFl
 	copyBuffer(stagingBuffer.get(), finalBuffer.get(), bufferSize);
 
 	return std::make_tuple(std::move(finalBuffer), std::move(finalMemory));
+}
+
+auto VulkanResources::createHostVisibleBuffer(vk::DeviceSize size, vk::BufferUsageFlags bufferUsage)
+{
+	return createBuffer(size, bufferUsage, vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible);
+}
+
+auto VulkanResources::createInstanceVertexBuffers()
+{
+	std::vector<vk::UniqueBuffer> buffers(MAX_FRAMES_IN_FLIGHT);
+	std::vector<vk::UniqueDeviceMemory> buffersMemory(MAX_FRAMES_IN_FLIGHT);
+	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+	{
+		std::tie(buffers[i], buffersMemory[i]) = createHostVisibleBuffer(sizeof(InstanceVertex) * 1024, vk::BufferUsageFlagBits::eVertexBuffer);
+	}
+	return std::make_tuple(std::move(buffers), std::move(buffersMemory));
 }
 
 auto VulkanResources::copyBufferToImage(vk::Buffer buffer, vk::Image image, uint32_t width, uint32_t height)
@@ -876,6 +894,7 @@ auto VulkanResources::updateUniformBuffer(uint64_t frameIndex)
 	auto elapsedTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 	UniformBufferObject mvp{glm::ortho(-1.0f, 1.0f, 1.0f, -1.0f, 0.0f, 100.0f)};
 	mvp.mvp *= glm::lookAt(glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+	mvp.mvp *= glm::translate(glm::mat4(1.0f), glm::vec3(-0.5f, 0.0f, 0.0f));
 	mvp.mvp *= glm::rotate(glm::mat4(1.0f), elapsedTime * glm::radians(30.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 
 	auto data = errorFatal(device->mapMemory(uniformBuffersMemory[frameIndex].get(), 0, sizeof(mvp)), "couldn't map memory"s);
@@ -883,7 +902,30 @@ auto VulkanResources::updateUniformBuffer(uint64_t frameIndex)
 	device->unmapMemory(uniformBuffersMemory[frameIndex].get());
 }
 
-auto VulkanResources::recordCommandBuffer(uint32_t imageIndex, SwapchainResources const& swapchainResources, vk::Buffer vertexBuffer)
+auto VulkanResources::updateInstanceBuffer(uint64_t frameIndex)
+{
+	static auto startTime = std::chrono::high_resolution_clock::now();
+	auto currentTime = std::chrono::high_resolution_clock::now();
+
+	auto elapsedTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+	glm::mat4 vp{glm::ortho(-1.0f, 1.0f, 1.0f, -1.0f, 0.0f, 100.0f)};
+	vp *= glm::lookAt(glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+
+	InstanceVertex instanceVertex{vp, glm::vec4(0.0f, 0.0f, 1.0f, 1.0f)};
+	auto data = static_cast<InstanceVertex*>(errorFatal(device->mapMemory(instanceVertexBufferMemory[frameIndex].get(),
+																		 0, sizeof(InstanceVertex) * 64), "couldn't map memory"s));
+	for (uint32_t i = 0; i < 64; i++)
+	{
+		instanceVertex.mvp = vp * glm::translate(glm::mat4(1.0f), glm::vec3(-0.75f + (xorshift32c(i + 2048) % 128) / 127.0f * 1.5f, -0.75f + (xorshift32c(i + 255) % 128) / 127.0f * 1.5f, (xorshift32c(i + 1) % 128) / 127.0f));
+		instanceVertex.mvp *= glm::rotate(glm::mat4(1.0f), elapsedTime * glm::radians(float(xorshift32c(i + 1) % 60)), glm::vec3(0.0f, 0.0f, 1.0f));
+		instanceVertex.mvp *= glm::scale(glm::mat4(1.0f), glm::vec3((xorshift32c(i + 1) % 8 + 2.0f) / 16.0f, (xorshift32c(i + 2) % 8 + 2.0f) / 16.0f, 1.0f));
+		memcpy(data, &instanceVertex, sizeof(instanceVertex));
+		data++;
+	}
+	device->unmapMemory(instanceVertexBufferMemory[frameIndex].get());
+}
+
+auto VulkanResources::recordCommandBuffer(uint32_t imageIndex, SwapchainResources const& swapchainResources)
 {
 	vk::CommandBufferBeginInfo commandBufferBeginInfo{{}, nullptr};
 	auto& commandBuffer = commandBuffers[currentFrame];
@@ -898,7 +940,9 @@ auto VulkanResources::recordCommandBuffer(uint32_t imageIndex, SwapchainResource
 
 	commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, swapchainResources.graphicsPipelines.current());
 
-	commandBuffer.bindVertexBuffers(0, vertexBuffer, 0ULL);
+	commandBuffer.bindVertexBuffers(0, vertexBuffer.get(), 0ULL);
+
+	commandBuffer.bindVertexBuffers(1, instanceVertexBuffer[currentFrame].get(), 0ULL);
 
 	commandBuffer.bindIndexBuffer(indexBuffer.get(), 0, vk::IndexType::eUint16);
 
@@ -911,7 +955,7 @@ auto VulkanResources::recordCommandBuffer(uint32_t imageIndex, SwapchainResource
 
 	commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout.get(), 0, descriptorSets[currentFrame], {});
 
-	commandBuffer.drawIndexed(static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+	commandBuffer.drawIndexed(static_cast<uint32_t>(indices.size()), 64, 0, 0, 0);
 
 	commandBuffer.endRenderPass();
 
@@ -1049,6 +1093,9 @@ VulkanResources::VulkanResources()
 	std::tie(vertexBuffer, vertexBufferMemory) = createDeviceLocalBuffer(vertices, vk::BufferUsageFlagBits::eVertexBuffer);
 	formatPrint(std::cout, "Created vertex buffer\n"sv);
 
+	std::tie(instanceVertexBuffer, instanceVertexBufferMemory) = createInstanceVertexBuffers();
+	formatPrint(std::cout, "Created instance vertex buffer\n"sv);
+
 	std::tie(indexBuffer, indexBufferMemory) = createDeviceLocalBuffer(indices, vk::BufferUsageFlagBits::eIndexBuffer);
 	formatPrint(std::cout, "Created index buffer\n"sv);
 
@@ -1129,10 +1176,11 @@ void VulkanResources::recreateSwapchainResources()
 void VulkanResources::submitImage(SwapchainResources const& swapchainResources, uint32_t imageIndex, bool isSwapchainRetired)
 {
 	updateUniformBuffer(currentFrame);
+	updateInstanceBuffer(currentFrame);
 
 	commandBuffers[currentFrame].reset();
 
-	recordCommandBuffer(imageIndex, swapchainResources, vertexBuffer.get());
+	recordCommandBuffer(imageIndex, swapchainResources);
 
 	std::array waitSemaphores{imageAvailableSemaphores[currentFrame].get()};
 	std::array waitStages{vk::PipelineStageFlags{vk::PipelineStageFlagBits::eColorAttachmentOutput}};
