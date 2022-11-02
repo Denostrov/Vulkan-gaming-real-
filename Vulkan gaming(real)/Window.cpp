@@ -1,32 +1,8 @@
 #include "Window.h"
 
 #include "constants.h"
-#include "VulkanResources.h"
+#include "Game.h"
 #include "helpers.h"
-
-void framebufferResizeCallback(GLFWwindow* window, int width, int height)
-{
-	auto vulkan = reinterpret_cast<VulkanResources*>(glfwGetWindowUserPointer(window));
-	vulkan->framebufferResized = true;
-}
-
-void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
-{
-	auto vulkan = reinterpret_cast<VulkanResources*>(glfwGetWindowUserPointer(window));
-	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-	{
-		glfwSetWindowShouldClose(window, true);
-	}
-	else if (key == GLFW_KEY_F3 && action == GLFW_PRESS)
-	{
-		vulkan->toggleWireframeMode();
-	}
-	else if (key == GLFW_KEY_F4 && action == GLFW_PRESS)
-	{
-		std::size_t temp = 0;
-		vulkan->addQuad(QuadComponent({0.0f, 0.0f, 0.0f}, 1.0f, {0.0f, 0.0f}, {1.0f, 1.0f}), &temp);
-	}
-}
 
 WindowContext::WindowContext()
 {
@@ -38,14 +14,14 @@ WindowContext::~WindowContext()
 	glfwTerminate();
 }
 
-Window::Window(int32_t width, int32_t height, WindowContext const&, VulkanResources* vulkan)
+Window::Window(int32_t width, int32_t height, WindowContext const&, EventHandler* eventHandler)
 	:width(width), height(height)
 {
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
 	assert(width > 0 && height > 0);
 	window = glfwCreateWindow(width, height, "Cocksweeper", nullptr, nullptr);
-	glfwSetWindowUserPointer(window, vulkan);
+	glfwSetWindowUserPointer(window, eventHandler);
 	glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
 	glfwSetKeyCallback(window, keyCallback);
 }

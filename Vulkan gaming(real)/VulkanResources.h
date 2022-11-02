@@ -6,6 +6,7 @@
 #include "QuadComponent.h"
 
 class VulkanResources;
+class EventHandler;
 
 struct QueueFamilyIndices
 {
@@ -77,9 +78,11 @@ private:
 class VulkanResources
 {
 public:
-	VulkanResources();
+	explicit VulkanResources(EventHandler* game);
 
 	bool windowCloseStatus();
+	void setWindowShouldClose();
+
 	void drawFrame();
 	void stopRendering();
 	void toggleWireframeMode();

@@ -1022,9 +1022,9 @@ RenderingPipelines::RenderingPipelines(VulkanResources& vulkan, vk::Extent2D vie
 	switchPipeline(initialType);
 }
 
-VulkanResources::VulkanResources()
+VulkanResources::VulkanResources(EventHandler* eventHandler)
 	:windowContext(),
-	renderWindow(800, 600, windowContext, this)
+	renderWindow(800, 600, windowContext, eventHandler)
 {
 	//load vulkan specific funcs into dispatcher
 	vk::DynamicLoader dynamicLoader;
@@ -1113,6 +1113,11 @@ VulkanResources::VulkanResources()
 bool VulkanResources::windowCloseStatus()
 {
 	return glfwWindowShouldClose(renderWindow);
+}
+
+void VulkanResources::setWindowShouldClose()
+{
+	glfwSetWindowShouldClose(renderWindow, true);
 }
 
 void VulkanResources::drawFrame()
