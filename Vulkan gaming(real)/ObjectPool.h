@@ -1,6 +1,8 @@
 #pragma once
 #include <vector>
 
+#include "QuadComponent.h"
+
 template<class T>
 class ObjectPool
 {
@@ -31,4 +33,9 @@ private:
 	std::vector<T> objects;
 	std::vector<std::size_t*> parentIndices;
 	std::size_t count;
+};
+
+struct ObjectPools
+{
+	inline static ObjectPool<QuadComponent> quads;
 };

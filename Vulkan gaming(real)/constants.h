@@ -18,6 +18,7 @@ static constexpr std::array<char const*, 1> DEVICE_EXTENSIONS{ VK_KHR_SWAPCHAIN_
 static constexpr std::array<char const*, 1> OPTIONAL_DEVICE_FEATURES{ };
 
 static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
+static constexpr double TIME_STEP = 0.0078125;
 
 struct Vertex
 {
@@ -67,10 +68,10 @@ struct UniformBufferObject
 };
 
 static constexpr std::array<Vertex, 4> vertices = {
-	Vertex{{-0.5f, -0.5f, 0.0f},	{1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-	Vertex{{0.5f, -0.5f, 0.0f},	{0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-	Vertex{{-0.5f, 0.5f, 0.0f},	{0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-	Vertex{{0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 0.0f}, {1.0f, 1.0f}}
+	Vertex{{0.0f, 0.0f, 0.0f},	{1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+	Vertex{{1.0f, 0.0f, 0.0f},	{0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+	Vertex{{0.0f, 1.0f, 0.0f},	{0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+	Vertex{{1.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {1.0f, 1.0f}}
 };
 
 static constexpr std::array<uint16_t, 4> indices = {0, 1, 2, 3};

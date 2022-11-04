@@ -4,6 +4,7 @@
 
 #include "VulkanResources.h"
 #include "EventHandler.h"
+#include "Text.h"
 
 class EventHandler;
 
@@ -18,6 +19,10 @@ private:
 
 	void onKeyPressed(int key);
 	void onKeyHeld(int key);
+
+	bool showFPSCounter = false;
+	uint64_t FPSCount = 0;
+	std::unique_ptr<Text> FPSCounter;
 
 	std::unique_ptr<VulkanResources> vulkan;
 

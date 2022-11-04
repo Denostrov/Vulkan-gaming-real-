@@ -86,7 +86,6 @@ public:
 	void drawFrame();
 	void stopRendering();
 	void toggleWireframeMode();
-	std::size_t addQuad(QuadComponent const& quad, std::size_t* parentIndex);
 
 	bool framebufferResized = false;
 private:
@@ -126,7 +125,6 @@ private:
 	std::vector<vk::UniqueSemaphore> renderFinishedSemaphores;
 	std::vector<vk::UniqueFence> inFlightFences;
 	uint64_t currentFrame{0};
-	ObjectPool<QuadComponent> quadComponents;
 
 	auto createDebugUtilsMessenger(vk::DebugUtilsMessengerCreateInfoEXT const& debugUtilsMessengerCreateInfo);
 	auto createSurface();

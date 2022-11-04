@@ -823,7 +823,7 @@ auto VulkanResources::createImage(uint32_t width, uint32_t height, vk::Format fo
 auto VulkanResources::createTextureImage()
 {
 	int textureWidth{}, textureHeight{}, textureChannels{};
-	stbi_uc* pixels = stbi_load("textures/damn dont care.jpg", &textureWidth, &textureHeight,
+	stbi_uc* pixels = stbi_load("textures/DejaVu mono.png", &textureWidth, &textureHeight,
 								&textureChannels, STBI_rgb_alpha);
 	vk::DeviceSize imageSize = textureWidth * textureHeight * 4;
 
@@ -909,12 +909,12 @@ auto VulkanResources::updateInstanceBuffer(uint64_t frameIndex)
 
 	auto elapsedTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
-	if (quadComponents.size() > 0)
+	if (ObjectPools::quads.size() > 0)
 	{
 		auto data = static_cast<InstanceVertex*>(errorFatal(device->mapMemory(instanceVertexBufferMemory[frameIndex].get(),
-																			  0, sizeof(InstanceVertex) * quadComponents.size()), "couldn't map memory"s));
+																			  0, sizeof(InstanceVertex) * ObjectPools::quads.size()), "couldn't map memory"s));
 
-		memcpy(data, quadComponents.data(), sizeof(InstanceVertex) * quadComponents.size());
+		memcpy(data, ObjectPools::quads.data(), sizeof(InstanceVertex) * ObjectPools::quads.size());
 
 		device->unmapMemory(instanceVertexBufferMemory[frameIndex].get());
 	}
@@ -950,7 +950,7 @@ auto VulkanResources::recordCommandBuffer(uint32_t imageIndex, SwapchainResource
 
 	commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout.get(), 0, descriptorSets[currentFrame], {});
 
-	commandBuffer.drawIndexed(static_cast<uint32_t>(indices.size()), static_cast<uint32_t>(quadComponents.size()), 0, 0, 0);
+	commandBuffer.drawIndexed(static_cast<uint32_t>(indices.size()), static_cast<uint32_t>(ObjectPools::quads.size()), 0, 0, 0);
 
 	commandBuffer.endRenderPass();
 
@@ -1221,9 +1221,4 @@ void VulkanResources::toggleWireframeMode()
 			swapchainResources->graphicsPipelines.switchPipeline(RenderingPipelines::Type::Wireframe);
 		}
 	}
-}
-
-std::size_t VulkanResources::addQuad(QuadComponent const& quad, std::size_t* parentIndex)
-{
-	return quadComponents.add(quad, parentIndex);
 }
