@@ -23,6 +23,7 @@ private:
 	bool showFPSCounter = false;
 	uint64_t FPSCount = 0;
 	std::unique_ptr<Text> FPSCounter;
+	void updateFPSCounter();
 
 	std::unique_ptr<VulkanResources> vulkan;
 

@@ -39,7 +39,7 @@ void Game::startLoop()
 			{
 				if (showFPSCounter)
 				{
-					FPSCounter = std::make_unique<Text>("FPS:"s + std::to_string(FPSCount), glm::vec3(-1.0f, -1.0f, 0.0f));
+					updateFPSCounter();
 				}
 
 				FPSTime = std::fmod(FPSTime, 1.0);
@@ -77,7 +77,7 @@ void Game::onKeyPressed(int key)
 		if (!showFPSCounter)
 		{
 			showFPSCounter = true;
-			FPSCounter = std::make_unique<Text>("FPS:"s + std::to_string(FPSCount), glm::vec3(-1.0f, -1.0f, 0.0f));
+			updateFPSCounter();
 		}
 		else
 		{
@@ -102,4 +102,9 @@ void Game::onKeyPressed(int key)
 void Game::onKeyHeld(int key)
 {
 
+}
+
+void Game::updateFPSCounter()
+{
+	FPSCounter = std::make_unique<Text>("FPS:"s + std::to_string(FPSCount), Font{1.0f / 16.0f, 27, 12, 20}, glm::vec3(-1.0f, -1.0f, 0.0f));
 }

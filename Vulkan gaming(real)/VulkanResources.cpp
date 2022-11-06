@@ -852,7 +852,7 @@ auto VulkanResources::createTextureSampler()
 {
 	auto maxAnisotropy = physicalDevice.getProperties().limits.maxSamplerAnisotropy;
 
-	vk::SamplerCreateInfo samplerCreateInfo{{}, vk::Filter::eNearest, vk::Filter::eLinear, vk::SamplerMipmapMode::eLinear, vk::SamplerAddressMode::eClampToEdge,
+	vk::SamplerCreateInfo samplerCreateInfo{{}, vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerMipmapMode::eLinear, vk::SamplerAddressMode::eClampToEdge,
 		vk::SamplerAddressMode::eClampToEdge, vk::SamplerAddressMode::eClampToEdge, 0.0f, VK_TRUE, maxAnisotropy, VK_FALSE, vk::CompareOp::eAlways,
 		0.0f, 0.0f, vk::BorderColor::eIntOpaqueBlack, VK_FALSE};
 
@@ -1024,7 +1024,7 @@ RenderingPipelines::RenderingPipelines(VulkanResources& vulkan, vk::Extent2D vie
 
 VulkanResources::VulkanResources(EventHandler* eventHandler)
 	:windowContext(),
-	renderWindow(800, 600, windowContext, eventHandler)
+	renderWindow(800, 800, windowContext, eventHandler)
 {
 	//load vulkan specific funcs into dispatcher
 	vk::DynamicLoader dynamicLoader;

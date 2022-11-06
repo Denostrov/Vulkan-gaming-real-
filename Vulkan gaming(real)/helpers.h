@@ -3,6 +3,7 @@
 #include <glm/glm.hpp>
 #include <string>
 #include <fstream>
+#include <utility>
 
 #include "logging.h"
 
@@ -46,3 +47,10 @@ inline uint32_t xorshift32c(uint32_t state)
 	state ^= state << 5;
 	return state;
 }
+
+template<class First, class Second>
+struct Pair
+{
+	First first;
+	Second second;
+};
