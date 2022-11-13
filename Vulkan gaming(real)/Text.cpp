@@ -28,6 +28,15 @@ Text::~Text()
 	}
 }
 
+void Text::shift(glm::vec3 const& shift)
+{
+	for (auto quad : letterQuads)
+	{
+		auto quadData = ObjectPools::quads.data() + quad;
+		quadData->setPosition(quadData->getPosition() + shift);
+	}
+}
+
 TextBox::TextBox(glm::vec3 const& position, glm::vec2 const& size, Font const& font)
 	:position(position), size(size), font(font)
 {}
@@ -41,12 +50,13 @@ void TextBox::addText(std::string const& text, uint64_t lifetime)
 		glm::vec3 rowPosition = glm::vec3(position.x, position.y + currentRow * font.scale, position.z);
 		if (currentCharIndex + rowChars > text.size())
 		{
-			contents.push_back(Pair{std::make_unique<Text>(std::string(text.begin() + currentCharIndex, text.end()), font, rowPosition), 512ULL});
+			contents.push_back(Pair{std::make_unique<Text>(std::string(text.begin() + currentCharIndex, text.end()), font, rowPosition), lifetime});
+			currentCharIndex = text.size();
 		}
 		else
 		{
 			contents.push_back(Pair{std::make_unique<Text>(std::string(text.begin() + currentCharIndex, text.begin() + currentCharIndex + rowChars), font, rowPosition),
-									512ULL});
+									lifetime});
 			currentCharIndex += rowChars;
 		}
 		currentRow++;
@@ -61,8 +71,18 @@ void TextBox::update()
 		{
 			contents.erase(contents.begin() + i);
 			i--;
+			shiftRows();
 			continue;
 		}
 		contents[i].second--;
 	}
+}
+
+void TextBox::shiftRows()
+{
+	for (auto& [text, lifetime] : contents)
+	{
+		text->shift(glm::vec3(0.0f, -font.scale, 0.0f));
+	}
+	currentRow--;
 }

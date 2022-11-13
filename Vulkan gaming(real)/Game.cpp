@@ -3,7 +3,7 @@
 #include "EventHandler.h"
 
 Game::Game()
-	:eventHandler(*this)
+	:eventHandler(*this), debugTextBox({0.0f, -1.0f, 0.0f}, {1.0f, 0.5f}, Font{1.0f / 22.0f, 27, 12, 20})
 {
 	vulkan = std::make_unique<VulkanResources>(&eventHandler);
 
@@ -49,6 +49,7 @@ void Game::startLoop()
 			while (elapsedTime > TIME_STEP && updateCount < 4)
 			{
 				elapsedTime -= TIME_STEP;
+				update();
 				updateCount++;
 			}
 			if (updateCount >= 4)
@@ -74,19 +75,12 @@ void Game::onKeyPressed(int key)
 		vulkan->setWindowShouldClose();
 		break;
 	case GLFW_KEY_F2:
-		if (!showFPSCounter)
-		{
-			showFPSCounter = true;
-			updateFPSCounter();
-		}
-		else
-		{
-			showFPSCounter = false;
-			FPSCounter.reset(nullptr);
-		}
+		toggleFPSCounter();
+		debugTextBox.addText("Toggled FPS counter"s, 512ULL);
 		break;
 	case GLFW_KEY_F3:
 		vulkan->toggleWireframeMode();
+		debugTextBox.addText("Toggled wireframe mode"s, 512ULL);
 		break;
 	case GLFW_KEY_F4:
 	{
@@ -104,7 +98,26 @@ void Game::onKeyHeld(int key)
 
 }
 
+void Game::update()
+{
+	debugTextBox.update();
+}
+
 void Game::updateFPSCounter()
 {
 	FPSCounter = std::make_unique<Text>("FPS:"s + std::to_string(FPSCount), Font{1.0f / 16.0f, 27, 12, 20}, glm::vec3(-1.0f, -1.0f, 0.0f));
+}
+
+void Game::toggleFPSCounter()
+{
+	if (!showFPSCounter)
+	{
+		showFPSCounter = true;
+		updateFPSCounter();
+	}
+	else
+	{
+		showFPSCounter = false;
+		FPSCounter.reset(nullptr);
+	}
 }

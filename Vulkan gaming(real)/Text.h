@@ -18,6 +18,8 @@ public:
 	Text(std::string const& text, Font const& font, glm::vec3 const& position);
 	~Text();
 
+	void shift(glm::vec3 const& shift);
+
 private:
 	std::vector<std::size_t> letterQuads;
 };
@@ -31,6 +33,7 @@ public:
 	void update();
 
 private:
+	void shiftRows();
 	uint64_t currentRow = 0;
 
 	std::vector<Pair<std::unique_ptr<Text>, uint64_t>> contents;

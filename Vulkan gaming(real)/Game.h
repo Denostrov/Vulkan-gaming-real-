@@ -20,10 +20,15 @@ private:
 	void onKeyPressed(int key);
 	void onKeyHeld(int key);
 
+	void update();
+
 	bool showFPSCounter = false;
 	uint64_t FPSCount = 0;
 	std::unique_ptr<Text> FPSCounter;
 	void updateFPSCounter();
+	void toggleFPSCounter();
+
+	TextBox debugTextBox;
 
 	std::unique_ptr<VulkanResources> vulkan;
 

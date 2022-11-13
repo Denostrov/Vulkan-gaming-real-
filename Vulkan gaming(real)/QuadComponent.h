@@ -8,6 +8,9 @@ public:
 	QuadComponent();
 	QuadComponent(glm::vec3 position, float scale, glm::vec2 texOffset, glm::vec2 texScale);
 
+	glm::vec3 getPosition() const;
+	void setPosition(glm::vec3 const& newPosition);
+
 private:
 	InstanceVertex instanceData;
 };
