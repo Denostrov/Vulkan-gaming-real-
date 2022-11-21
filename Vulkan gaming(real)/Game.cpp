@@ -3,7 +3,7 @@
 #include "EventHandler.h"
 
 Game::Game()
-	:eventHandler(*this), debugTextBox({0.0f, -1.0f, 0.0f}, {1.0f, 0.5f}, Font{1.0f / 22.0f, 27, 12, 20})
+	:eventHandler(*this), debugFont{512, 512, 1.0f / 22.0f, 27, 20, 40}, debugTextBox({0.0f, -1.0f, 0.0f}, {1.0f, 0.5f}, debugFont), mineMap{30, 15, debugFont}
 {
 	vulkan = std::make_unique<VulkanResources>(&eventHandler);
 
@@ -85,7 +85,7 @@ void Game::onKeyPressed(int key)
 	case GLFW_KEY_F4:
 	{
 		uint64_t temp = 0;
-		ObjectPools::quads.add(QuadComponent({0.0f, 0.0f, 0.0f}, 1.0f, {0.0f, 0.0f}, {0.5f, 0.5f}), &temp);
+		ObjectPools::quads.add(QuadComponent({0.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 0.0f}, {1.0f, 1.0f}), &temp);
 		break;
 	}
 	default:
@@ -105,7 +105,7 @@ void Game::update()
 
 void Game::updateFPSCounter()
 {
-	FPSCounter = std::make_unique<Text>("FPS:"s + std::to_string(FPSCount), Font{1.0f / 16.0f, 27, 12, 20}, glm::vec3(-1.0f, -1.0f, 0.0f));
+	FPSCounter = std::make_unique<Text>("FPS:"s + std::to_string(FPSCount), debugFont, glm::vec3(-1.0f, -1.0f, 0.0f));
 }
 
 void Game::toggleFPSCounter()

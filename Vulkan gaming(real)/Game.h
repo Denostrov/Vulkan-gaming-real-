@@ -5,6 +5,7 @@
 #include "VulkanResources.h"
 #include "EventHandler.h"
 #include "Text.h"
+#include "Map.h"
 
 class EventHandler;
 
@@ -28,11 +29,14 @@ private:
 	void updateFPSCounter();
 	void toggleFPSCounter();
 
+	Font debugFont;
 	TextBox debugTextBox;
 
 	std::unique_ptr<VulkanResources> vulkan;
 
 	EventHandler eventHandler;
 	friend class EventHandler;
+
+	Map mineMap;
 };
 

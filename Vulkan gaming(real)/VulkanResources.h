@@ -88,9 +88,12 @@ public:
 	void toggleWireframeMode();
 
 	bool framebufferResized = false;
-private:
+
 	WindowContext windowContext;
 	Window renderWindow;
+private:
+	
+	
 	vk::UniqueInstance instance;
 	vk::UniqueDebugUtilsMessengerEXT debugUtilsMessenger;
 	vk::UniqueSurfaceKHR surface;

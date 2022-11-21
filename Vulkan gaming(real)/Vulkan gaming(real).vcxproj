@@ -152,6 +152,7 @@
     <ClCompile Include="EventHandler.cpp" />
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Map.cpp" />
     <ClCompile Include="QuadComponent.cpp" />
     <ClCompile Include="Text.cpp" />
     <ClCompile Include="VulkanResources.cpp" />
@@ -163,6 +164,7 @@
     <ClInclude Include="Game.h" />
     <ClInclude Include="helpers.h" />
     <ClInclude Include="logging.h" />
+    <ClInclude Include="Map.h" />
     <ClInclude Include="ObjectPool.h" />
     <ClInclude Include="print.h" />
     <ClInclude Include="QuadComponent.h" />

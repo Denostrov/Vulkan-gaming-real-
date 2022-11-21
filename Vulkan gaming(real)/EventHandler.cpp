@@ -17,6 +17,16 @@ void EventHandler::pollEvents()
 	{
 		game.onKeyHeld(key);
 	}
+	if (glfwGetMouseButton(game.vulkan->renderWindow, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+	{
+		double xPos, yPos;
+		int windowWidth, windowHeight;
+		glfwGetCursorPos(game.vulkan->renderWindow, &xPos, &yPos);
+		glfwGetWindowSize(game.vulkan->renderWindow, &windowWidth, &windowHeight);
+		xPos = xPos / windowWidth * 2.0 - 1.0;
+		yPos = yPos / windowHeight * 2.0 - 1.0;
+		game.mineMap.onMousePressed(xPos, yPos);
+	}
 }
 
 std::vector<int> EventHandler::getPressedKeys()

@@ -2,20 +2,36 @@
 
 #include "ObjectPool.h"
 
+glm::vec2 Font::getCharOffset(unsigned char c) const
+{
+	c = std::max(c, startChar) - startChar;
+	uint32_t cellXCount = bitmapWidth / cellWidth;
+	uint32_t cellYCount = bitmapHeight / cellHeight;
+	float xOffset = (c % cellXCount) * (float)cellWidth / bitmapWidth;
+	float yOffset = (c / cellXCount) * (float)cellHeight / bitmapHeight;
+	return glm::vec2(xOffset, yOffset);
+}
+
+glm::vec2 Font::getCharTextureScale() const
+{
+	float xScale = (float)(cellWidth - 1) / bitmapWidth;
+	float yScale = (float)(cellHeight - 2) / bitmapHeight;
+	return glm::vec2(xScale, yScale);
+}
+
 Text::Text(std::string const& text, Font const& font, glm::vec3 const& position)
 {
 	letterQuads.reserve(text.size());
 	auto currentX = position.x;
-	uint32_t cellXCount = 256 / font.cellWidth;
-	uint32_t cellYCount = 256 / font.cellHeight;
+	uint32_t cellXCount = font.bitmapWidth / font.cellWidth;
+	uint32_t cellYCount = font.bitmapHeight / font.cellHeight;
 	for (unsigned char c : text)
 	{
 		letterQuads.push_back(0);
-		c = std::max(c, font.startChar) - font.startChar;
-		float xOffset = (c % cellXCount) * font.cellWidth / 256.0f;
-		float yOffset = (c / cellXCount) * font.cellHeight / 256.0f;
-		letterQuads[letterQuads.size() - 1] = ObjectPools::quads.add(QuadComponent(glm::vec3(currentX, position.y, position.z), font.scale,
-											 glm::vec2(xOffset, yOffset), glm::vec2(font.cellWidth / 256.0f, font.cellHeight / 256.0f)), &letterQuads[letterQuads.size() - 1]);
+		ObjectPools::quads.add(QuadComponent(glm::vec3(currentX, position.y, position.z),
+											 glm::vec2(font.scale * font.cellWidth / font.cellHeight, font.scale),
+											 font.getCharOffset(c), font.getCharTextureScale()),
+							   &letterQuads[letterQuads.size() - 1]);
 		currentX += font.scale;
 	}
 }

@@ -12,11 +12,11 @@ public:
 	{}
 	ObjectPool(ObjectPool const&) = delete;
 
-	std::size_t add(T const& newObject, std::size_t* parentIndex)
+	void add(T const& newObject, std::size_t* parentIndex)
 	{
 		parentIndices[count] = parentIndex;
 		objects[count] = newObject;
-		return count++;
+		*parentIndex = count++;
 	}
 
 	void remove(std::size_t index)

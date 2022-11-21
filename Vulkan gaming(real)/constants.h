@@ -44,7 +44,8 @@ struct Vertex
 
 struct InstanceVertex
 {
-	glm::vec4 positionScale;
+	glm::vec3 position;
+	glm::vec2 scale;
 	glm::vec4 texOffsetScale;
 
 	static auto getBindingDescription()
@@ -55,8 +56,9 @@ struct InstanceVertex
 	static auto getAttributeDescriptions()
 	{
 		std::vector<vk::VertexInputAttributeDescription> attributeDescriptions{
-			{3, 1, vk::Format::eR32G32B32A32Sfloat, 0},
-			{4, 1, vk::Format::eR32G32B32A32Sfloat, sizeof(float) * 4}
+			{3, 1, vk::Format::eR32G32B32Sfloat, offsetof(InstanceVertex, position)},
+			{4, 1, vk::Format::eR32G32Sfloat, offsetof(InstanceVertex, scale)},
+			{5, 1, vk::Format::eR32G32B32A32Sfloat, offsetof(InstanceVertex, texOffsetScale)}
 		};
 		return attributeDescriptions;
 	}
