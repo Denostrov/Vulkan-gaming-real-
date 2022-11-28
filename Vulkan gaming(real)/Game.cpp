@@ -3,7 +3,7 @@
 #include "EventHandler.h"
 
 Game::Game()
-	:eventHandler(*this), debugFont{512, 512, 1.0f / 22.0f, 27, 20, 40}, debugTextBox({0.0f, -1.0f, 0.0f}, {1.0f, 0.5f}, debugFont), mineMap{30, 15, debugFont}
+	:eventHandler(), debugFont{512, 512, 1.0f / 22.0f, 27, 20, 40}, debugTextBox({0.0f, -1.0f, 0.0f}, {1.0f, 0.5f}, debugFont), mineMap{30, 15, debugFont}
 {
 	vulkan = std::make_unique<VulkanResources>(&eventHandler);
 
@@ -67,6 +67,26 @@ void Game::startLoop()
 	vulkan->stopRendering();
 }
 
+void Game::onMouseButtonPressed(int button)
+{
+	switch (button)
+	{
+	case GLFW_MOUSE_BUTTON_LEFT:
+	{
+		auto [xPos, yPos] = vulkan->getCursorCoordinates();
+		mineMap.onMousePressed(xPos, yPos);
+		break;
+	}
+	default:
+		break;
+	}
+}
+
+void Game::onMouseButtonHeld(int button)
+{
+
+}
+
 void Game::onKeyPressed(int key)
 {
 	switch (key)
@@ -100,7 +120,17 @@ void Game::onKeyHeld(int key)
 
 void Game::update()
 {
+	processInput();
 	debugTextBox.update();
+}
+
+void Game::processInput()
+{
+	vulkan->framebufferResized = eventHandler.getFramebufferResized();
+	for (auto key : eventHandler.getPressedKeys()) onKeyPressed(key);
+	for (auto key : eventHandler.getHeldKeys()) onKeyHeld(key);
+	for (auto button : eventHandler.getPressedMouseButtons()) onMouseButtonPressed(button);
+	for (auto button : eventHandler.getHeldMouseButtons()) onMouseButtonHeld(button);
 }
 
 void Game::updateFPSCounter()

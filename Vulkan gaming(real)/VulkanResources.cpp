@@ -1120,6 +1120,17 @@ void VulkanResources::setWindowShouldClose()
 	glfwSetWindowShouldClose(renderWindow, true);
 }
 
+std::pair<double, double> VulkanResources::getCursorCoordinates()
+{
+	double xPos, yPos;
+	int windowWidth, windowHeight;
+	glfwGetCursorPos(renderWindow, &xPos, &yPos);
+	glfwGetWindowSize(renderWindow, &windowWidth, &windowHeight);
+	xPos = xPos / windowWidth * 2.0 - 1.0;
+	yPos = yPos / windowHeight * 2.0 - 1.0;
+	return {xPos, yPos};
+}
+
 void VulkanResources::drawFrame()
 {
 	auto waitResult = device->waitForFences(inFlightFences[currentFrame].get(), VK_TRUE, std::numeric_limits<uint64_t>::max());

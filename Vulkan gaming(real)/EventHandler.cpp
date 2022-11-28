@@ -2,52 +2,56 @@
 
 #include "Game.h"
 
-EventHandler::EventHandler(Game& game)
-	:game(game)
+EventHandler::EventHandler()
 {}
 
 void EventHandler::pollEvents()
 {
 	glfwPollEvents();
-	for (auto key : getPressedKeys())
-	{
-		game.onKeyPressed(key);
-	}
-	for (auto key : getHeldKeys())
-	{
-		game.onKeyHeld(key);
-	}
-	if (glfwGetMouseButton(game.vulkan->renderWindow, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
-	{
-		double xPos, yPos;
-		int windowWidth, windowHeight;
-		glfwGetCursorPos(game.vulkan->renderWindow, &xPos, &yPos);
-		glfwGetWindowSize(game.vulkan->renderWindow, &windowWidth, &windowHeight);
-		xPos = xPos / windowWidth * 2.0 - 1.0;
-		yPos = yPos / windowHeight * 2.0 - 1.0;
-		game.mineMap.onMousePressed(xPos, yPos);
-	}
 }
 
-std::vector<int> EventHandler::getPressedKeys()
+std::unordered_set<int> EventHandler::getPressedKeys()
 {
-	std::vector<int> result;
-	for (auto key : keysPressed)
-	{
-		result.push_back(key);
-	}
+	std::unordered_set<int> result = keysPressed;
 	keysPressed.clear();
 	return result;
 }
 
-std::vector<int> EventHandler::getHeldKeys()
+std::unordered_set<int> EventHandler::getHeldKeys()
 {
-	std::vector<int> result;
-	for (auto key : keysHeld)
-	{
-		result.push_back(key);
-	}
+	return keysHeld;
+}
+
+std::unordered_set<int> EventHandler::getPressedMouseButtons()
+{
+	std::unordered_set<int> result = mouseButtonsPressed;
+	mouseButtonsPressed.clear();
 	return result;
+}
+
+std::unordered_set<int> EventHandler::getHeldMouseButtons()
+{
+	return mouseButtonsHeld;
+}
+
+bool EventHandler::getFramebufferResized()
+{
+	auto result = framebufferResized;
+	framebufferResized = false;
+	return result;
+}
+
+void EventHandler::onMouseButtonEvent(int button, int action, int mods)
+{
+	if (action == GLFW_PRESS)
+	{
+		mouseButtonsPressed.insert(button);
+		mouseButtonsHeld.insert(button);
+	}
+	else if (action == GLFW_RELEASE)
+	{
+		mouseButtonsHeld.erase(button);
+	}
 }
 
 void EventHandler::onKeyEvent(int key, int scancode, int action, int mods)
@@ -65,7 +69,7 @@ void EventHandler::onKeyEvent(int key, int scancode, int action, int mods)
 
 void EventHandler::onFramebufferResizeEvent()
 {
-	game.vulkan->framebufferResized = true;
+	framebufferResized = true;
 }
 
 void framebufferResizeCallback(GLFWwindow* window, int width, int height)
@@ -78,4 +82,10 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 {
 	auto eventHandler = reinterpret_cast<EventHandler*>(glfwGetWindowUserPointer(window));
 	eventHandler->onKeyEvent(key, scancode, action, mods);
+}
+
+void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
+{
+	auto eventHandler = reinterpret_cast<EventHandler*>(glfwGetWindowUserPointer(window));
+	eventHandler->onMouseButtonEvent(button, action, mods);
 }

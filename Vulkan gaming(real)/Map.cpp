@@ -35,9 +35,9 @@ Map::~Map()
 
 void Map::onMousePressed(double xPos, double yPos)
 {
-	int64_t xIndex = (xPos - position.x) / scale.x * width;
-	int64_t yIndex = (yPos - position.y) / scale.y * height;
-	if (xIndex >= 0 && xIndex < width && yIndex >= 0 && yIndex < height)
+	int64_t xIndex = static_cast<int64_t>(std::floor((xPos - position.x) / scale.x * width));
+	int64_t yIndex = static_cast<int64_t>(std::floor((yPos - position.y) / scale.y * height));
+	if (xIndex >= 0 && xIndex < (int64_t)width && yIndex >= 0 && yIndex < (int64_t)height)
 	{
 		updateCell(xIndex, yIndex);
 	}
@@ -53,11 +53,11 @@ void Map::updateCell(size_t xIndex, size_t yIndex)
 	if (leftX >= 0 && mines[leftX + yIndex * width]) mineCount++;
 	if (upY >= 0 && mines[xIndex + upY * width]) mineCount++;
 	if (leftX >= 0 && upY >= 0 && mines[leftX + upY * width]) mineCount++;
-	if (rightX < width && mines[rightX + yIndex * width]) mineCount++;
-	if (rightX < width && upY >= 0 && mines[rightX + upY * width]) mineCount++;
-	if (downY < height && mines[xIndex + downY * width]) mineCount++;
-	if (leftX >= 0 && downY < height && mines[leftX + downY * width]) mineCount++;
-	if (rightX < width && downY < height && mines[rightX + downY * width]) mineCount++;
+	if (rightX < (int64_t)width && mines[rightX + yIndex * width]) mineCount++;
+	if (rightX < (int64_t)width && upY >= 0 && mines[rightX + upY * width]) mineCount++;
+	if (downY < (int64_t)height && mines[xIndex + downY * width]) mineCount++;
+	if (leftX >= 0 && downY < (int64_t)height && mines[leftX + downY * width]) mineCount++;
+	if (rightX < (int64_t)width && downY < (int64_t)height && mines[rightX + downY * width]) mineCount++;
 
 	if (mineCount == '0')
 	{

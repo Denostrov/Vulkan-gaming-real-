@@ -24,6 +24,7 @@ Window::Window(int32_t width, int32_t height, WindowContext const&, EventHandler
 	glfwSetWindowUserPointer(window, eventHandler);
 	glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
 	glfwSetKeyCallback(window, keyCallback);
+	glfwSetMouseButtonCallback(window, mouseButtonCallback);
 }
 
 Window::~Window()

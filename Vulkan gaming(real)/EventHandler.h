@@ -11,27 +11,35 @@ enum class EventType
 	FramebufferResize, Key
 };
 
+void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
 void framebufferResizeCallback(GLFWwindow* window, int width, int height);
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 
 class EventHandler
 {
 public:
-	explicit EventHandler(Game& game);
+	explicit EventHandler();
 
 	void pollEvents();
 
+	std::unordered_set<int> getPressedKeys();
+	std::unordered_set<int> getHeldKeys();
+	std::unordered_set<int> getPressedMouseButtons();
+	std::unordered_set<int> getHeldMouseButtons();
+	bool getFramebufferResized();
+
 private:
+	void onMouseButtonEvent(int button, int action, int mods);
 	void onKeyEvent(int key, int scancode, int action, int mods);
 	void onFramebufferResizeEvent();
-	std::vector<int> getPressedKeys();
-	std::vector<int> getHeldKeys();
 
 	std::unordered_set<int> keysPressed;
 	std::unordered_set<int> keysHeld;
+	std::unordered_set<int> mouseButtonsPressed;
+	std::unordered_set<int> mouseButtonsHeld;
+	bool framebufferResized = false;
 
-	Game& game;
-
+	friend void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
 	friend void framebufferResizeCallback(GLFWwindow* window, int width, int height);
 	friend void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 };

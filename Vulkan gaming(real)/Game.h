@@ -18,10 +18,13 @@ private:
 	bool gameShouldStop();
 	void startLoop();
 
+	void onMouseButtonPressed(int button);
+	void onMouseButtonHeld(int button);
 	void onKeyPressed(int key);
 	void onKeyHeld(int key);
 
 	void update();
+	void processInput();
 
 	bool showFPSCounter = false;
 	uint64_t FPSCount = 0;

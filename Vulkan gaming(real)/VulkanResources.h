@@ -83,17 +83,17 @@ public:
 	bool windowCloseStatus();
 	void setWindowShouldClose();
 
+	std::pair<double, double> getCursorCoordinates();
+
 	void drawFrame();
 	void stopRendering();
 	void toggleWireframeMode();
 
 	bool framebufferResized = false;
 
+private:
 	WindowContext windowContext;
 	Window renderWindow;
-private:
-	
-	
 	vk::UniqueInstance instance;
 	vk::UniqueDebugUtilsMessengerEXT debugUtilsMessenger;
 	vk::UniqueSurfaceKHR surface;
