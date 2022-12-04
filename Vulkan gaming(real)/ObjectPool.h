@@ -8,7 +8,7 @@ class ObjectPool
 {
 public:
 	ObjectPool()
-		:objects(1024), parentIndices(1024), count(0)
+		:objects(2048), parentIndices(2048), count(0)
 	{}
 	ObjectPool(ObjectPool const&) = delete;
 
@@ -26,6 +26,7 @@ public:
 		*parentIndices[index] = index;
 		count--;
 	}
+	std::size_t capacity() const { return objects.size(); }
 	std::size_t size() const { return count; }
 	T* data() { return objects.data(); }
 

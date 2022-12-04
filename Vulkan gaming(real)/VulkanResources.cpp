@@ -718,7 +718,7 @@ auto VulkanResources::createInstanceVertexBuffers()
 	std::vector<vk::UniqueDeviceMemory> buffersMemory(MAX_FRAMES_IN_FLIGHT);
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
-		std::tie(buffers[i], buffersMemory[i]) = createHostVisibleBuffer(sizeof(InstanceVertex) * 1024, vk::BufferUsageFlagBits::eVertexBuffer);
+		std::tie(buffers[i], buffersMemory[i]) = createHostVisibleBuffer(sizeof(InstanceVertex) * ObjectPools::quads.capacity(), vk::BufferUsageFlagBits::eVertexBuffer);
 	}
 	return std::make_tuple(std::move(buffers), std::move(buffersMemory));
 }

@@ -1,0 +1,10 @@
+{
+	"bitmapWidth": 512,
+	"bitmapHeight": 512,
+	"scale": 0.05,
+	"startChar": 27,
+	"cellWidth": 20,
+	"cellHeight": 40,
+	"charWidth": 19,
+	"charHeight": 38
+}

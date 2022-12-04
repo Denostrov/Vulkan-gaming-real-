@@ -2,23 +2,6 @@
 
 #include "ObjectPool.h"
 
-glm::vec2 Font::getCharOffset(unsigned char c) const
-{
-	c = std::max(c, startChar) - startChar;
-	uint32_t cellXCount = bitmapWidth / cellWidth;
-	uint32_t cellYCount = bitmapHeight / cellHeight;
-	float xOffset = (c % cellXCount) * (float)cellWidth / bitmapWidth;
-	float yOffset = (c / cellXCount) * (float)cellHeight / bitmapHeight;
-	return glm::vec2(xOffset, yOffset);
-}
-
-glm::vec2 Font::getCharTextureScale() const
-{
-	float xScale = (float)(cellWidth - 1) / bitmapWidth;
-	float yScale = (float)(cellHeight - 2) / bitmapHeight;
-	return glm::vec2(xScale, yScale);
-}
-
 Text::Text(std::string const& text, Font const& font, glm::vec3 const& position)
 {
 	letterQuads.reserve(text.size());
@@ -32,7 +15,7 @@ Text::Text(std::string const& text, Font const& font, glm::vec3 const& position)
 											 glm::vec2(font.scale * font.cellWidth / font.cellHeight, font.scale),
 											 font.getCharOffset(c), font.getCharTextureScale()),
 							   &letterQuads[letterQuads.size() - 1]);
-		currentX += font.scale;
+		currentX += font.scale * font.cellWidth / font.cellHeight;
 	}
 }
 
@@ -59,7 +42,7 @@ TextBox::TextBox(glm::vec3 const& position, glm::vec2 const& size, Font const& f
 
 void TextBox::addText(std::string const& text, uint64_t lifetime)
 {
-	uint64_t rowChars = static_cast<uint64_t>(size.x / font.scale);
+	uint64_t rowChars = static_cast<uint64_t>(size.x / (font.scale * font.cellWidth / font.cellHeight));
 	uint64_t currentCharIndex = 0;
 	while (currentCharIndex < text.size())
 	{

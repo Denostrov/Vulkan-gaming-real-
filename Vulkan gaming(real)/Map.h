@@ -13,6 +13,7 @@ public:
 
 	void onMousePressed(double xPos, double yPos);
 	void updateCell(size_t xIndex, size_t yIndex);
+	void updateNeighbors(size_t xIndex, size_t yIndex);
 
 private:
 	size_t width;

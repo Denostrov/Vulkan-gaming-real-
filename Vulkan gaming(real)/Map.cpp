@@ -64,10 +64,20 @@ void Map::updateCell(size_t xIndex, size_t yIndex)
 		mineCount = ' ';
 	}
 	if (mines[xIndex + yIndex * width]) mineCount = 'X';
+
 	ObjectPools::quads.remove(cellQuads[xIndex + yIndex * width]);
+
 	glm::vec3 quadPosition{scale.x / width * xIndex + position.x, scale.y / height * yIndex + position.y, position.z};
 	glm::vec2 quadScale{scale.x / width, scale.y / height};
 	ObjectPools::quads.add(QuadComponent(quadPosition, quadScale, font.getCharOffset(mineCount), font.getCharTextureScale()), &cellQuads[yIndex * width + xIndex]);
+}
+
+void Map::updateNeighbors(size_t xIndex, size_t yIndex)
+{
+	int64_t upY = yIndex - 1;
+	int64_t downY = yIndex + 1;
+	int64_t leftX = xIndex - 1;
+	int64_t rightX = xIndex + 1;
 }
 
 

@@ -3,7 +3,7 @@
 #include "EventHandler.h"
 
 Game::Game()
-	:eventHandler(), debugFont{512, 512, 1.0f / 22.0f, 27, 20, 40}, debugTextBox({0.0f, -1.0f, 0.0f}, {1.0f, 0.5f}, debugFont), mineMap{30, 15, debugFont}
+	:eventHandler(), debugFont{"textures/DejaVu mono.json"}, debugTextBox({0.0f, -1.0f, 0.0f}, {1.0f, 0.5f}, debugFont), mineMap{30, 15, debugFont}
 {
 	vulkan = std::make_unique<VulkanResources>(&eventHandler);
 

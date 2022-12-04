@@ -3,19 +3,7 @@
 #include "constants.h"
 #include "helpers.h"
 #include "QuadComponent.h"
-
-struct Font
-{
-	glm::vec2 getCharOffset(unsigned char c) const;
-	glm::vec2 getCharTextureScale() const;
-
-	uint32_t bitmapWidth;
-	uint32_t bitmapHeight;
-	float scale;
-	uint8_t startChar;
-	uint32_t cellWidth;
-	uint32_t cellHeight;
-};
+#include "Font.h"
 
 class Text
 {
