@@ -364,3 +364,4 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 /Vulkan Setup
+/Vulkan gaming(real)/Vulkan gaming(real).vcxproj
