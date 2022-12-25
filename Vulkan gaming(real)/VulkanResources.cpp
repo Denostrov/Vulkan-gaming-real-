@@ -176,10 +176,10 @@ auto VulkanResources::rateDeviceScore(vk::PhysicalDevice const& physicalDevice,
 	score += physicalDeviceProperties.limits.maxBoundDescriptorSets;
 	score += physicalDeviceProperties.limits.maxPushConstantsSize;
 	score += physicalDeviceProperties.limits.maxFramebufferHeight;
+	score += physicalDeviceProperties.limits.maxFramebufferWidth;
+	score += physicalDeviceProperties.limits.maxFramebufferLayers;
 	score += physicalDeviceProperties.limits.maxImageArrayLayers;
 	score += physicalDeviceProperties.limits.maxVertexInputBindings;
-	score += physicalDeviceProperties.limits.maxMemoryAllocationCount;
-	score += physicalDeviceProperties.limits.maxSamplerAllocationCount;
 
 	if (score > std::numeric_limits<uint32_t>::max())
 	{
@@ -1063,7 +1063,7 @@ VulkanResources::VulkanResources(EventHandler* eventHandler)
 	formatPrint(std::cout, "Acquired presentation queue\n"sv);
 
 	descriptorSetLayout = createDescriptorSetLayout();
-	formatPrint(std::cout, "Created descriptor set layout"sv);
+	formatPrint(std::cout, "Created descriptor set layout\n"sv);
 
 	pipelineLayout = createGraphicsPipelineLayout();
 	formatPrint(std::cout, "Created graphics pipeline layout\n"sv);
