@@ -71,10 +71,11 @@ void Game::onMouseButtonPressed(int button)
 {
 	switch (button)
 	{
+	case GLFW_MOUSE_BUTTON_RIGHT:
 	case GLFW_MOUSE_BUTTON_LEFT:
 	{
 		auto [xPos, yPos] = vulkan->getCursorCoordinates();
-		mineMap.onMousePressed(xPos, yPos);
+		mineMap.onMousePressed(xPos, yPos, button == GLFW_MOUSE_BUTTON_LEFT);
 		break;
 	}
 	default:

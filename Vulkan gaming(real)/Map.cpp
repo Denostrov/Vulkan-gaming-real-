@@ -34,19 +34,20 @@ Map::~Map()
 	}
 }
 
-void Map::onMousePressed(double xPos, double yPos)
+void Map::onMousePressed(double xPos, double yPos, bool leftButton)
 {
 	int64_t xIndex = static_cast<int64_t>(std::floor((xPos - position.x) / scale.x * width));
 	int64_t yIndex = static_cast<int64_t>(std::floor((yPos - position.y) / scale.y * height));
 	if (isIndexValid(xIndex, yIndex) && !cells[xIndex + yIndex * width].uncovered)
 	{
-		pressCell(xIndex, yIndex);
+		if (leftButton) pressCell(xIndex, yIndex);
+		else markCell(xIndex, yIndex);
 	}
 }
 
 void Map::pressCell(size_t xIndex, size_t yIndex)
 {
-	auto mineCount = '0';
+	uint8_t mineCount = '0';
 	for (auto offset : adjacencyOffsets)
 	{
 		int64_t xAdjacent = xIndex + offset.first;
@@ -74,19 +75,21 @@ void Map::pressCell(size_t xIndex, size_t yIndex)
 		}
 	}
 
-	ObjectPools::quads.remove(cellQuads[xIndex + yIndex * width]);
-
-	glm::vec3 quadPosition{scale.x / width * xIndex + position.x, scale.y / height * yIndex + position.y, position.z};
-	glm::vec2 quadScale{scale.x / width, scale.y / height};
-	ObjectPools::quads.add(QuadComponent(quadPosition, quadScale, font.getCharOffset(mineCount), font.getCharTextureScale()), &cellQuads[yIndex * width + xIndex]);
+	changeCellQuad(xIndex, yIndex, mineCount);
 }
 
-void Map::updateNeighbors(size_t xIndex, size_t yIndex)
+void Map::markCell(size_t xIndex, size_t yIndex)
 {
-	int64_t upY = yIndex - 1;
-	int64_t downY = yIndex + 1;
-	int64_t leftX = xIndex - 1;
-	int64_t rightX = xIndex + 1;
+	changeCellQuad(xIndex, yIndex, '!');
+}
+
+void Map::changeCellQuad(size_t xIndex, size_t yIndex, uint8_t newQuad)
+{
+	ObjectPools::quads.remove(cellQuads[xIndex + yIndex * width]);
+
+	glm::vec3 quadPosition{ scale.x / width * xIndex + position.x, scale.y / height * yIndex + position.y, position.z };
+	glm::vec2 quadScale{ scale.x / width, scale.y / height };
+	ObjectPools::quads.add(QuadComponent(quadPosition, quadScale, font.getCharOffset(newQuad), font.getCharTextureScale()), &cellQuads[yIndex * width + xIndex]);
 }
 
 bool Map::isIndexValid(int64_t xIndex, int64_t yIndex)

@@ -17,11 +17,13 @@ public:
 	Map(size_t width, size_t height, Font const& font);
 	~Map();
 
-	void onMousePressed(double xPos, double yPos);
-	void pressCell(size_t xIndex, size_t yIndex);
-	void updateNeighbors(size_t xIndex, size_t yIndex);
+	void onMousePressed(double xPos, double yPos, bool leftButton);
 
 private:
+	void pressCell(size_t xIndex, size_t yIndex);
+	void markCell(size_t xIndex, size_t yIndex);
+	void changeCellQuad(size_t xIndex, size_t yIndex, uint8_t newQuad);
+
 	bool isIndexValid(int64_t xIndex, int64_t yIndex);
 
 	size_t width;
