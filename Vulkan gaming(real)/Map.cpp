@@ -87,9 +87,46 @@ void Map::changeCellQuad(size_t xIndex, size_t yIndex, uint8_t newQuad)
 {
 	ObjectPools::quads.remove(cellQuads[xIndex + yIndex * width]);
 
+	glm::vec3 cellColor{ 1.0f, 1.0f, 1.0f };
+	switch (newQuad)
+	{
+	case 'X':
+		cellColor = { 1.0f, 0.0f, 1.0f };
+		break;
+	case '!':
+		cellColor = { 1.0f, 0.5f, 0.0f };
+		break;
+	case '1':
+		cellColor = { 0.0f, 0.0f, 1.0f };
+		break;
+	case '2':
+		cellColor = { 0.0f, 0.5f, 0.0f };
+		break;
+	case '3':
+		cellColor = { 1.0f, 0.0f, 0.0f };
+		break;
+	case '4':
+		cellColor = { 0.0f, 0.0f, 0.5f };
+		break;
+	case '5':
+		cellColor = { 0.5f, 0.0f, 0.0f };
+		break;
+	case '6':
+		cellColor = { 0.0f, 0.5f, 0.5f };
+		break;
+	case '7':
+		cellColor = { 0.5f, 0.5f, 0.0f };
+		break;
+	case '8':
+		cellColor = { 0.5f, 0.5f, 0.5f };
+		break;
+	default:
+		break;
+	}
+
 	glm::vec3 quadPosition{ scale.x / width * xIndex + position.x, scale.y / height * yIndex + position.y, position.z };
 	glm::vec2 quadScale{ scale.x / width, scale.y / height };
-	ObjectPools::quads.add(QuadComponent(quadPosition, quadScale, font.getCharOffset(newQuad), font.getCharTextureScale()), &cellQuads[yIndex * width + xIndex]);
+	ObjectPools::quads.add(QuadComponent(quadPosition, quadScale, font.getCharOffset(newQuad), font.getCharTextureScale(), cellColor), &cellQuads[yIndex * width + xIndex]);
 }
 
 bool Map::isIndexValid(int64_t xIndex, int64_t yIndex)

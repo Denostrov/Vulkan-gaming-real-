@@ -23,7 +23,6 @@ static constexpr double TIME_STEP = 0.0078125;
 struct Vertex
 {
 	glm::vec3 position;
-	glm::vec3 color;
 	glm::vec2 texCoord;
 
 	static auto getBindingDescription()
@@ -35,8 +34,7 @@ struct Vertex
 	{
 		std::vector<vk::VertexInputAttributeDescription> attributeDescriptions{
 			{0, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, position)},
-			{1, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, color)},
-			{2, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, texCoord)}
+			{1, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, texCoord)}
 		};
 		return attributeDescriptions;
 	}
@@ -44,6 +42,7 @@ struct Vertex
 
 struct InstanceVertex
 {
+	glm::vec3 color;
 	glm::vec3 position;
 	glm::vec2 scale;
 	glm::vec4 texOffsetScale;
@@ -56,6 +55,7 @@ struct InstanceVertex
 	static auto getAttributeDescriptions()
 	{
 		std::vector<vk::VertexInputAttributeDescription> attributeDescriptions{
+			{2, 1, vk::Format::eR32G32B32Sfloat, offsetof(InstanceVertex, color)},
 			{3, 1, vk::Format::eR32G32B32Sfloat, offsetof(InstanceVertex, position)},
 			{4, 1, vk::Format::eR32G32Sfloat, offsetof(InstanceVertex, scale)},
 			{5, 1, vk::Format::eR32G32B32A32Sfloat, offsetof(InstanceVertex, texOffsetScale)}
@@ -70,10 +70,10 @@ struct UniformBufferObject
 };
 
 static constexpr std::array<Vertex, 4> vertices = {
-	Vertex{{0.0f, 0.0f, 0.0f},	{1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-	Vertex{{1.0f, 0.0f, 0.0f},	{0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-	Vertex{{0.0f, 1.0f, 0.0f},	{0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-	Vertex{{1.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {1.0f, 1.0f}}
+	Vertex{{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+	Vertex{{1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+	Vertex{{0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}},
+	Vertex{{1.0f, 1.0f, 0.0f}, {1.0f, 1.0f}}
 };
 
 static constexpr std::array<uint16_t, 4> indices = {0, 1, 2, 3};
