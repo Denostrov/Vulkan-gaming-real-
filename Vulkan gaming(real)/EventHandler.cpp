@@ -34,6 +34,13 @@ std::unordered_set<int> EventHandler::getHeldMouseButtons()
 	return mouseButtonsHeld;
 }
 
+std::unordered_set<int> EventHandler::getReleasedMouseButtons()
+{
+	std::unordered_set<int> result = mouseButtonsReleased;
+	mouseButtonsReleased.clear();
+	return result;
+}
+
 bool EventHandler::getFramebufferResized()
 {
 	auto result = framebufferResized;
@@ -51,6 +58,7 @@ void EventHandler::onMouseButtonEvent(int button, int action, int mods)
 	else if (action == GLFW_RELEASE)
 	{
 		mouseButtonsHeld.erase(button);
+		mouseButtonsReleased.insert(button);
 	}
 }
 

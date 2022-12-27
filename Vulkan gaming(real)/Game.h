@@ -20,6 +20,8 @@ private:
 
 	void onMouseButtonPressed(int button);
 	void onMouseButtonHeld(int button);
+	void onMouseButtonReleased(int button);
+
 	void onKeyPressed(int key);
 	void onKeyHeld(int key);
 

@@ -24,8 +24,11 @@ public:
 
 	std::unordered_set<int> getPressedKeys();
 	std::unordered_set<int> getHeldKeys();
+
 	std::unordered_set<int> getPressedMouseButtons();
 	std::unordered_set<int> getHeldMouseButtons();
+	std::unordered_set<int> getReleasedMouseButtons();
+
 	bool getFramebufferResized();
 
 private:
@@ -35,8 +38,11 @@ private:
 
 	std::unordered_set<int> keysPressed;
 	std::unordered_set<int> keysHeld;
+
 	std::unordered_set<int> mouseButtonsPressed;
 	std::unordered_set<int> mouseButtonsHeld;
+	std::unordered_set<int> mouseButtonsReleased;
+
 	bool framebufferResized = false;
 
 	friend void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods);

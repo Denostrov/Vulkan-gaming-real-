@@ -36,43 +36,51 @@ Map::~Map()
 
 void Map::onMousePressed(double xPos, double yPos, bool leftButton)
 {
+	if (inputBlocked) return;
+
 	int64_t xIndex = static_cast<int64_t>(std::floor((xPos - position.x) / scale.x * width));
 	int64_t yIndex = static_cast<int64_t>(std::floor((yPos - position.y) / scale.y * height));
-	if (isIndexValid(xIndex, yIndex) && !cells[xIndex + yIndex * width].uncovered)
+	if (isIndexValid(xIndex, yIndex))
 	{
-		if (leftButton) pressCell(xIndex, yIndex);
-		else markCell(xIndex, yIndex);
+		auto& clickedCell = getCellAtIndex(xIndex, yIndex);
+		if (clickedCell.state == CellState::eCovered)
+		{
+			if (leftButton) pressCell(xIndex, yIndex);
+			else markCell(xIndex, yIndex);
+		}
+		else if (clickedCell.state == CellState::eMarked)
+		{
+			if (!leftButton) unmarkCell(xIndex, yIndex);
+		}
+		else
+		{
+			checkCell(xIndex, yIndex);
+			inputBlocked = true;
+		}
+	}
+}
+
+void Map::onMouseReleased()
+{
+	if (inputBlocked)
+	{
+		uncheckCell(checkedCellIndices.first, checkedCellIndices.second);
+		inputBlocked = false;
 	}
 }
 
 void Map::pressCell(size_t xIndex, size_t yIndex)
 {
-	uint8_t mineCount = '0';
-	for (auto offset : adjacencyOffsets)
-	{
-		int64_t xAdjacent = xIndex + offset.first;
-		int64_t yAdjacent = yIndex + offset.second;
-		if (isIndexValid(xAdjacent, yAdjacent) && cells[xAdjacent + width * yAdjacent].mined)
-		{
-			mineCount++;
-		}
-	}
+	uint8_t mineCount = countAdjacentMines(xIndex, yIndex);
 
-	cells[xIndex + yIndex * width].uncovered = true;
+	auto& pressedCell = getCellAtIndex(xIndex, yIndex);
+	pressedCell.state = CellState::eUncovered;
 
-	if (cells[xIndex + yIndex * width].mined) mineCount = 'X';
+	if (pressedCell.mined) mineCount = 'X';
 	else if (mineCount == '0')
 	{
 		mineCount = ' ';
-		for (auto offset : adjacencyOffsets)
-		{
-			int64_t xAdjacent = xIndex + offset.first;
-			int64_t yAdjacent = yIndex + offset.second;
-			if (isIndexValid(xAdjacent, yAdjacent) && !cells[xAdjacent + width * yAdjacent].uncovered)
-			{
-				pressCell(xAdjacent, yAdjacent);
-			}
-		}
+		pressAdjacentCells(xIndex, yIndex);
 	}
 
 	changeCellQuad(xIndex, yIndex, mineCount);
@@ -80,7 +88,66 @@ void Map::pressCell(size_t xIndex, size_t yIndex)
 
 void Map::markCell(size_t xIndex, size_t yIndex)
 {
+	getCellAtIndex(xIndex, yIndex).state = CellState::eMarked;
 	changeCellQuad(xIndex, yIndex, '!');
+}
+
+void Map::unmarkCell(size_t xIndex, size_t yIndex)
+{
+	getCellAtIndex(xIndex, yIndex).state = CellState::eCovered;
+	changeCellQuad(xIndex, yIndex, '#');
+}
+
+void Map::checkCell(size_t xIndex, size_t yIndex)
+{
+	for (auto&& [xOffset, yOffset] : adjacencyOffsets)
+	{
+		int64_t xAdjacent = xIndex + xOffset;
+		int64_t yAdjacent = yIndex + yOffset;
+		if (isIndexValid(xAdjacent, yAdjacent) && getCellAtIndex(xAdjacent, yAdjacent).state == CellState::eCovered)
+		{
+			changeCellQuad(xAdjacent, yAdjacent, '?');
+		}
+	}
+	checkedCellIndices = { xIndex, yIndex };
+}
+
+void Map::uncheckCell(size_t xIndex, size_t yIndex)
+{
+	if (countAdjacentMarks(xIndex, yIndex) == countAdjacentMines(xIndex, yIndex))
+	{
+		pressAdjacentCells(xIndex, yIndex);
+	}
+	else
+	{
+		for (auto&& [xOffset, yOffset] : adjacencyOffsets)
+		{
+			int64_t xAdjacent = xIndex + xOffset;
+			int64_t yAdjacent = yIndex + yOffset;
+			if (isIndexValid(xAdjacent, yAdjacent) && getCellAtIndex(xAdjacent, yAdjacent).state == CellState::eCovered)
+			{
+				changeCellQuad(xAdjacent, yAdjacent, '#');
+			}
+		}
+	}
+}
+
+void Map::pressAdjacentCells(size_t xIndex, size_t yIndex)
+{
+	for (auto&& [xOffset, yOffset] : adjacencyOffsets)
+	{
+		int64_t xAdjacent = xIndex + xOffset;
+		int64_t yAdjacent = yIndex + yOffset;
+		if (isIndexValid(xAdjacent, yAdjacent) && getCellAtIndex(xAdjacent, yAdjacent).state == CellState::eCovered)
+		{
+			pressCell(xAdjacent, yAdjacent);
+		}
+	}
+}
+
+Map::Cell& Map::getCellAtIndex(size_t xIndex, size_t yIndex)
+{
+	return cells[xIndex + width * yIndex];
 }
 
 void Map::changeCellQuad(size_t xIndex, size_t yIndex, uint8_t newQuad)

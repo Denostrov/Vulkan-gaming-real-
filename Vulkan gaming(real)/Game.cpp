@@ -88,6 +88,21 @@ void Game::onMouseButtonHeld(int button)
 
 }
 
+void Game::onMouseButtonReleased(int button)
+{
+	switch (button)
+	{
+	case GLFW_MOUSE_BUTTON_RIGHT:
+	case GLFW_MOUSE_BUTTON_LEFT:
+	{
+		mineMap.onMouseReleased();
+		break;
+	}
+	default:
+		break;
+	}
+}
+
 void Game::onKeyPressed(int key)
 {
 	switch (key)
@@ -132,6 +147,7 @@ void Game::processInput()
 	for (auto key : eventHandler.getHeldKeys()) onKeyHeld(key);
 	for (auto button : eventHandler.getPressedMouseButtons()) onMouseButtonPressed(button);
 	for (auto button : eventHandler.getHeldMouseButtons()) onMouseButtonHeld(button);
+	for (auto button : eventHandler.getReleasedMouseButtons()) onMouseButtonReleased(button);
 }
 
 void Game::updateFPSCounter()
