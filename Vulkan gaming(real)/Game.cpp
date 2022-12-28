@@ -3,7 +3,9 @@
 #include "EventHandler.h"
 
 Game::Game()
-	:eventHandler(), debugFont{"textures/DejaVu mono.json"}, debugTextBox({0.0f, -1.0f, 0.0f}, {1.0f, 0.5f}, debugFont), mineMap{30, 15, debugFont}
+	:eventHandler(), debugFont{"textures/DejaVu mono.json"}, debugTextBox({0.0f, -1.0f, 0.0f}, {1.0f, 0.5f}, debugFont),
+	mineMap{30, 15, debugFont}, resetButton({-1.0f / 16.0f, -1.0f, 0.0f}, {2.0f / 16.0f, 2.0f / 16.0f}, debugFont, "lmao"s,
+		MemberFunction(mineMap, &Map::reset))
 {
 	vulkan = std::make_unique<VulkanResources>(&eventHandler);
 
@@ -76,6 +78,7 @@ void Game::onMouseButtonPressed(int button)
 	{
 		auto [xPos, yPos] = vulkan->getCursorCoordinates();
 		mineMap.onMousePressed(xPos, yPos, button == GLFW_MOUSE_BUTTON_LEFT);
+		if (button == GLFW_MOUSE_BUTTON_LEFT) resetButton.onMousePressed(xPos, yPos);
 		break;
 	}
 	default:

@@ -24,7 +24,10 @@ public:
 	void onMousePressed(double xPos, double yPos, bool leftButton);
 	void onMouseReleased();
 
+	void reset();
 private:
+	void populateMines();
+
 	void pressCell(size_t xIndex, size_t yIndex);
 	void markCell(size_t xIndex, size_t yIndex);
 	void unmarkCell(size_t xIndex, size_t yIndex);

@@ -6,6 +6,7 @@
 #include "EventHandler.h"
 #include "Text.h"
 #include "Map.h"
+#include "Button.h"
 
 class EventHandler;
 
@@ -43,5 +44,6 @@ private:
 	friend class EventHandler;
 
 	Map mineMap;
+	Button<MemberFunction<void, Map>> resetButton;
 };
 

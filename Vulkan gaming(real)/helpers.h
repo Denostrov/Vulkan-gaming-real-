@@ -54,3 +54,28 @@ struct Pair
 	First first;
 	Second second;
 };
+
+template<class Return, class... Args>
+struct FreeFunction
+{
+	FreeFunction(Return(*func)(Args...))
+		:func(func)
+	{}
+
+	Return operator()(Args... args) { return func(args...); }
+
+	Return(*func)(Args...);
+};
+
+template<class Return, class Member, class... Args>
+struct MemberFunction
+{
+	MemberFunction(Member& member, Return(Member::* func)(Args...))
+		:member(member), func(func)
+	{}
+
+	Return operator()(Args... args) { return (member.*func)(args...); }
+
+	Member& member;
+	Return(Member::* func)(Args...);
+};

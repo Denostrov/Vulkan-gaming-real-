@@ -4,26 +4,10 @@
 #include <random>
 
 Map::Map(size_t width, size_t height, Font const& font)
-	:width{width}, height{height}, position{-1.0f, -15.0f/16.0f, -0.1f}, scale{2.0f, 1.0f + 15.0f/16.0f}, font{font}, cells(width * height),
+	:width{width}, height{height}, position{-1.0f, -14.0f/16.0f, -0.1f}, scale{2.0f, 1.0f + 14.0f/16.0f}, font{font}, cells(width * height),
 	adjacencyOffsets{{-1, -1}, {0, -1}, {1, -1}, {-1, 0}, {1, 0}, {-1, 1}, {0, 1}, {1, 1}}
 {
-	cellQuads.resize(width * height);
-	for (size_t i = 0; i < height; i++)
-	{
-		for (size_t j = 0; j < width; j++)
-		{
-			glm::vec3 quadPosition{scale.x / width * j + position.x, scale.y / height * i + position.y, position.z};
-			glm::vec2 quadScale{scale.x / width, scale.y / height};
-			ObjectPools::quads.add(QuadComponent(quadPosition, quadScale, font.getCharOffset('#'), font.getCharTextureScale()), &cellQuads[i * width + j]);
-		}
-	}
-	for (size_t i = 0; i < 50; i++)
-	{
-		cells[i].mined = true;
-	}
-	std::random_device rd;
-	std::minstd_rand gen(rd());
-	std::shuffle(cells.begin(), cells.end(), gen);
+	populateMines();
 }
 
 Map::~Map()
@@ -67,6 +51,38 @@ void Map::onMouseReleased()
 		uncheckCell(checkedCellIndices.first, checkedCellIndices.second);
 		inputBlocked = false;
 	}
+}
+
+void Map::reset()
+{
+	for (auto quad : cellQuads)
+	{
+		ObjectPools::quads.remove(quad);
+	}
+	cells = std::vector<Cell>(width * height);
+
+	populateMines();
+}
+
+void Map::populateMines()
+{
+	cellQuads.resize(width * height);
+	for (size_t i = 0; i < height; i++)
+	{
+		for (size_t j = 0; j < width; j++)
+		{
+			glm::vec3 quadPosition{ scale.x / width * j + position.x, scale.y / height * i + position.y, position.z };
+			glm::vec2 quadScale{ scale.x / width, scale.y / height };
+			ObjectPools::quads.add(QuadComponent(quadPosition, quadScale, font.getCharOffset('#'), font.getCharTextureScale()), &cellQuads[i * width + j]);
+		}
+	}
+	for (size_t i = 0; i < 50; i++)
+	{
+		cells[i].mined = true;
+	}
+	std::random_device rd;
+	std::minstd_rand gen(rd());
+	std::shuffle(cells.begin(), cells.end(), gen);
 }
 
 void Map::pressCell(size_t xIndex, size_t yIndex)
