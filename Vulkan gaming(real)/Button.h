@@ -13,6 +13,10 @@ public:
 	{
 		ObjectPools::quads.add(QuadComponent(position, scale, font.getCharOffset(28), font.getCharTextureScale()), &borderQuad);
 	}
+	~Button()
+	{
+		ObjectPools::quads.remove(borderQuad);
+	}
 
 	void onMousePressed(double xPos, double yPos)
 	{
@@ -20,6 +24,11 @@ public:
 		{
 			onClick();
 		}
+	}
+
+	void changeText(std::string const& newText)
+	{
+		textQuads.setText(newText);
 	}
 
 private:

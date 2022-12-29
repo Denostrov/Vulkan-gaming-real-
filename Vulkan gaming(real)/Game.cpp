@@ -4,7 +4,7 @@
 
 Game::Game()
 	:eventHandler(), debugFont{"textures/DejaVu mono.json"}, debugTextBox({0.0f, -1.0f, 0.0f}, {1.0f, 0.5f}, debugFont),
-	mineMap{30, 15, debugFont}, resetButton({-1.0f / 16.0f, -1.0f, 0.0f}, {2.0f / 16.0f, 2.0f / 16.0f}, debugFont, "lmao"s,
+	mineMap{ 30, 15, debugFont, {*this, &Game::onMapStateChanged} }, resetButton({ -2.0f / 16.0f, -1.0f, 0.0f }, { 4.0f / 16.0f, 2.0f / 16.0f }, debugFont, "lmao"s,
 		MemberFunction(mineMap, &Map::reset))
 {
 	vulkan = std::make_unique<VulkanResources>(&eventHandler);
@@ -135,6 +135,24 @@ void Game::onKeyPressed(int key)
 void Game::onKeyHeld(int key)
 {
 
+}
+
+void Game::onMapStateChanged(Map::State newState)
+{
+	switch (newState)
+	{
+	case Map::State::ePlaying:
+		resetButton.changeText("lmao"s);
+		break;
+	case Map::State::eLost:
+		resetButton.changeText("retard"s);
+		break;
+	case Map::State::eWon:
+		resetButton.changeText("based"s);
+		break;
+	default:
+		break;
+	}
 }
 
 void Game::update()

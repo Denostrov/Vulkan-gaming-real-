@@ -3,6 +3,42 @@
 #include "ObjectPool.h"
 
 Text::Text(std::string const& text, Font const& font, glm::vec3 const& position)
+	:position(position), font(font), text(text)
+{
+	addQuads();
+}
+
+Text::~Text()
+{
+	clearQuads();
+}
+
+void Text::shift(glm::vec3 const& shift)
+{
+	for (auto quad : letterQuads)
+	{
+		auto quadData = ObjectPools::quads.data() + quad;
+		quadData->setPosition(quadData->getPosition() + shift);
+	}
+}
+
+void Text::setText(std::string const& newText)
+{
+	clearQuads();
+	text = newText;
+	addQuads();
+}
+
+void Text::clearQuads()
+{
+	for (auto quad : letterQuads)
+	{
+		ObjectPools::quads.remove(quad);
+	}
+	letterQuads.clear();
+}
+
+void Text::addQuads()
 {
 	letterQuads.reserve(text.size());
 	auto currentX = position.x;
@@ -12,27 +48,10 @@ Text::Text(std::string const& text, Font const& font, glm::vec3 const& position)
 	{
 		letterQuads.push_back(0);
 		ObjectPools::quads.add(QuadComponent(glm::vec3(currentX, position.y, position.z),
-											 glm::vec2(font.scale * font.cellWidth / font.cellHeight, font.scale),
-											 font.getCharOffset(c), font.getCharTextureScale()),
-							   &letterQuads[letterQuads.size() - 1]);
+			glm::vec2(font.scale * font.cellWidth / font.cellHeight, font.scale),
+			font.getCharOffset(c), font.getCharTextureScale()),
+			&letterQuads[letterQuads.size() - 1]);
 		currentX += font.scale * font.cellWidth / font.cellHeight;
-	}
-}
-
-Text::~Text()
-{
-	for (auto quad : letterQuads)
-	{
-		ObjectPools::quads.remove(quad);
-	}
-}
-
-void Text::shift(glm::vec3 const& shift)
-{
-	for (auto quad : letterQuads)
-	{
-		auto quadData = ObjectPools::quads.data() + quad;
-		quadData->setPosition(quadData->getPosition() + shift);
 	}
 }
 

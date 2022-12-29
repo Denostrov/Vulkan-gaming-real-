@@ -5,6 +5,8 @@
 #include "constants.h"
 #include "Text.h"
 
+class Game;
+
 class Map
 {
 	enum class CellState
@@ -18,7 +20,13 @@ class Map
 	};
 
 public:
-	Map(size_t width, size_t height, Font const& font);
+	enum class State
+	{
+		ePlaying, eLost, eWon
+	};
+
+public:
+	Map(size_t width, size_t height, Font const& font, MemberFunction<void, Game, State> stateChangedCallback);
 	~Map();
 
 	void onMousePressed(double xPos, double yPos, bool leftButton);
@@ -65,6 +73,8 @@ private:
 
 	bool isIndexValid(int64_t xIndex, int64_t yIndex);
 
+	MemberFunction<void, Game, State> stateChangedCallback;
+
 	bool inputBlocked = false;
 	std::pair<size_t, size_t> checkedCellIndices;
 
@@ -78,4 +88,6 @@ private:
 
 	std::vector<size_t> cellQuads;
 	std::vector<Cell> cells;
+	size_t coveredCellCount;
+	State currentState;
 };

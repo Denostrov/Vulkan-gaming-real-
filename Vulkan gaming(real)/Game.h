@@ -26,6 +26,8 @@ private:
 	void onKeyPressed(int key);
 	void onKeyHeld(int key);
 
+	void onMapStateChanged(Map::State newState);
+
 	void update();
 	void processInput();
 

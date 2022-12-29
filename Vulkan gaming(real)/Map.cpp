@@ -3,9 +3,10 @@
 
 #include <random>
 
-Map::Map(size_t width, size_t height, Font const& font)
+Map::Map(size_t width, size_t height, Font const& font, MemberFunction<void, Game, State> stateChangedCallback)
 	:width{width}, height{height}, position{-1.0f, -14.0f/16.0f, -0.1f}, scale{2.0f, 1.0f + 14.0f/16.0f}, font{font}, cells(width * height),
-	adjacencyOffsets{{-1, -1}, {0, -1}, {1, -1}, {-1, 0}, {1, 0}, {-1, 1}, {0, 1}, {1, 1}}
+	adjacencyOffsets{{-1, -1}, {0, -1}, {1, -1}, {-1, 0}, {1, 0}, {-1, 1}, {0, 1}, {1, 1}}, stateChangedCallback(stateChangedCallback),
+	coveredCellCount{width * height}, currentState{State::ePlaying}
 {
 	populateMines();
 }
@@ -46,7 +47,7 @@ void Map::onMousePressed(double xPos, double yPos, bool leftButton)
 
 void Map::onMouseReleased()
 {
-	if (inputBlocked)
+	if (inputBlocked && currentState == State::ePlaying)
 	{
 		uncheckCell(checkedCellIndices.first, checkedCellIndices.second);
 		inputBlocked = false;
@@ -60,8 +61,13 @@ void Map::reset()
 		ObjectPools::quads.remove(quad);
 	}
 	cells = std::vector<Cell>(width * height);
+	coveredCellCount = width * height;
 
 	populateMines();
+
+	inputBlocked = false;
+	currentState = State::ePlaying;
+	stateChangedCallback(State::ePlaying);
 }
 
 void Map::populateMines()
@@ -79,6 +85,7 @@ void Map::populateMines()
 	for (size_t i = 0; i < 50; i++)
 	{
 		cells[i].mined = true;
+		coveredCellCount--;
 	}
 	std::random_device rd;
 	std::minstd_rand gen(rd());
@@ -92,11 +99,28 @@ void Map::pressCell(size_t xIndex, size_t yIndex)
 	auto& pressedCell = getCellAtIndex(xIndex, yIndex);
 	pressedCell.state = CellState::eUncovered;
 
-	if (pressedCell.mined) mineCount = 'X';
+	if (pressedCell.mined)
+	{
+		mineCount = 'X';
+		inputBlocked = true;
+		currentState = State::eLost;
+		stateChangedCallback(State::eLost);
+	}
 	else if (mineCount == '0')
 	{
 		mineCount = ' ';
 		pressAdjacentCells(xIndex, yIndex);
+	}
+
+	if (mineCount != 'X')
+	{
+		coveredCellCount--;
+		if (coveredCellCount == 0)
+		{
+			inputBlocked = true;
+			currentState = State::eWon;
+			stateChangedCallback(State::eWon);
+		}
 	}
 
 	changeCellQuad(xIndex, yIndex, mineCount);

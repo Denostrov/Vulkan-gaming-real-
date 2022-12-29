@@ -13,7 +13,17 @@ public:
 
 	void shift(glm::vec3 const& shift);
 
+	void setText(std::string const& newText);
+	std::string const& getText() const { return text; }
+
 private:
+	void clearQuads();
+	void addQuads();
+
+	glm::vec3 position;
+
+	Font font;
+	std::string text;
 	std::vector<std::size_t> letterQuads;
 };
 
