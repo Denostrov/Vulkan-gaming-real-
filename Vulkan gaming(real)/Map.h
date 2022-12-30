@@ -33,6 +33,11 @@ public:
 	void onMouseReleased();
 
 	void reset();
+
+	size_t coveredCellCount;
+	size_t markedCellCount{};
+	State currentState;
+
 private:
 	void populateMines();
 
@@ -88,6 +93,4 @@ private:
 
 	std::vector<size_t> cellQuads;
 	std::vector<Cell> cells;
-	size_t coveredCellCount;
-	State currentState;
 };

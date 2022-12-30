@@ -50,5 +50,9 @@ private:
 
 	Map mineMap;
 	Button<MemberFunction<void, Map>> resetButton;
+
+	Text remainingMines;
+	double gameTimer{};
+	Text gameTimerText;
 };
 

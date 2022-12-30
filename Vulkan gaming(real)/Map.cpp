@@ -62,6 +62,7 @@ void Map::reset()
 	}
 	cells = std::vector<Cell>(width * height);
 	coveredCellCount = width * height;
+	markedCellCount = 0;
 
 	populateMines();
 
@@ -129,12 +130,14 @@ void Map::pressCell(size_t xIndex, size_t yIndex)
 void Map::markCell(size_t xIndex, size_t yIndex)
 {
 	getCellAtIndex(xIndex, yIndex).state = CellState::eMarked;
+	markedCellCount++;
 	changeCellQuad(xIndex, yIndex, '!');
 }
 
 void Map::unmarkCell(size_t xIndex, size_t yIndex)
 {
 	getCellAtIndex(xIndex, yIndex).state = CellState::eCovered;
+	markedCellCount--;
 	changeCellQuad(xIndex, yIndex, '#');
 }
 
