@@ -3,7 +3,7 @@
 #include "EventHandler.h"
 
 Game::Game()
-	:eventHandler(), debugFont{"textures/DejaVu mono.json"}, debugTextBox({0.0f, -1.0f, 0.0f}, {1.0f, 0.5f}, debugFont),
+	:eventHandler(), debugFont{"textures/DejaVu mono.json"}, debugTextBox({0.0f, -1.0f, 0.0f}, {1.0f, 0.5f}, debugFont), gameOverFlash(debugFont),
 	mineMap{ 30, 15, debugFont, {*this, &Game::onMapStateChanged} }, resetButton({ -2.0f / 16.0f, -1.0f, 0.0f }, { 4.0f / 16.0f, 2.0f / 16.0f }, debugFont, "lmao"s,
 		MemberFunction(mineMap, &Map::reset))
 {
@@ -146,9 +146,11 @@ void Game::onMapStateChanged(Map::State newState)
 		break;
 	case Map::State::eLost:
 		resetButton.changeText("retard"s);
+		gameOverFlash.start({ 1.0f, 0.0f, 0.0f }, 0.25);
 		break;
 	case Map::State::eWon:
 		resetButton.changeText("based"s);
+		gameOverFlash.start({ 0.0f, 1.0f, 0.0f }, 0.25);
 		break;
 	default:
 		break;
@@ -159,6 +161,7 @@ void Game::update()
 {
 	processInput();
 	debugTextBox.update();
+	gameOverFlash.update();
 }
 
 void Game::processInput()

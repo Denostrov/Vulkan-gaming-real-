@@ -2,7 +2,7 @@
 
 layout(binding = 1) uniform sampler2D texSampler;
 
-layout(location = 0) in vec3 fragColor;
+layout(location = 0) in vec4 fragColor;
 layout(location = 1) in vec2 fragTexCoord;
 layout(location = 2) in vec4 fragTexOffsetScale;
 
@@ -10,7 +10,7 @@ layout(location = 0) out vec4 outColor;
 
 void main()
 {
-	vec4 texColor = texture(texSampler, fragTexOffsetScale.xy + fragTexCoord * fragTexOffsetScale.zw) * vec4(fragColor, 1.0);
-	if (texColor.w < 0.05) discard;
+	vec4 texColor = texture(texSampler, fragTexOffsetScale.xy + fragTexCoord * fragTexOffsetScale.zw) * fragColor;
+	if (texColor.w < 0.01) discard;
 	outColor = texColor;
 }

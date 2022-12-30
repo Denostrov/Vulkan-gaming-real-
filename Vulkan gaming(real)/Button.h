@@ -34,7 +34,7 @@ public:
 private:
 	glm::vec3 getTextPosition()
 	{
-		return glm::vec3(position.x + font.scale / 4.0f, position.y + scale.y / 2.0f - font.scale / 2.0f, position.z);
+		return glm::vec3(position.x + font.scale / 2.0f, position.y + scale.y / 2.0f - font.scale / 2.0f, position.z);
 	}
 
 	glm::vec3 position;

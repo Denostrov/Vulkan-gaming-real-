@@ -233,7 +233,7 @@ void Map::changeCellQuad(size_t xIndex, size_t yIndex, uint8_t newQuad)
 
 	glm::vec3 quadPosition{ scale.x / width * xIndex + position.x, scale.y / height * yIndex + position.y, position.z };
 	glm::vec2 quadScale{ scale.x / width, scale.y / height };
-	ObjectPools::quads.add(QuadComponent(quadPosition, quadScale, font.getCharOffset(newQuad), font.getCharTextureScale(), cellColor), &cellQuads[yIndex * width + xIndex]);
+	ObjectPools::quads.add(QuadComponent(quadPosition, quadScale, font.getCharOffset(newQuad), font.getCharTextureScale(), glm::vec4(cellColor, 1.0f)), &cellQuads[yIndex * width + xIndex]);
 }
 
 bool Map::isIndexValid(int64_t xIndex, int64_t yIndex)

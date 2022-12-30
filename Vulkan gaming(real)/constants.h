@@ -42,7 +42,7 @@ struct Vertex
 
 struct InstanceVertex
 {
-	glm::vec3 color;
+	glm::vec4 color;
 	glm::vec3 position;
 	glm::vec2 scale;
 	glm::vec4 texOffsetScale;
@@ -55,7 +55,7 @@ struct InstanceVertex
 	static auto getAttributeDescriptions()
 	{
 		std::vector<vk::VertexInputAttributeDescription> attributeDescriptions{
-			{2, 1, vk::Format::eR32G32B32Sfloat, offsetof(InstanceVertex, color)},
+			{2, 1, vk::Format::eR32G32B32A32Sfloat, offsetof(InstanceVertex, color)},
 			{3, 1, vk::Format::eR32G32B32Sfloat, offsetof(InstanceVertex, position)},
 			{4, 1, vk::Format::eR32G32Sfloat, offsetof(InstanceVertex, scale)},
 			{5, 1, vk::Format::eR32G32B32A32Sfloat, offsetof(InstanceVertex, texOffsetScale)}

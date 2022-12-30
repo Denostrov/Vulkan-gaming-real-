@@ -7,6 +7,7 @@
 #include "Text.h"
 #include "Map.h"
 #include "Button.h"
+#include "GraphicalEffects.h"
 
 class EventHandler;
 
@@ -44,6 +45,8 @@ private:
 
 	EventHandler eventHandler;
 	friend class EventHandler;
+
+	ColorFlash gameOverFlash;
 
 	Map mineMap;
 	Button<MemberFunction<void, Map>> resetButton;
