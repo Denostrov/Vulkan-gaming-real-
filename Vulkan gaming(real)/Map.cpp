@@ -3,10 +3,11 @@
 
 #include <random>
 
-Map::Map(size_t width, size_t height, Font const& font, MemberFunction<void, Game, State> stateChangedCallback)
-	:width{width}, height{height}, position{-1.0f, -14.0f/16.0f, -0.1f}, scale{2.0f, 1.0f + 14.0f/16.0f}, font{font}, cells(width * height),
-	adjacencyOffsets{{-1, -1}, {0, -1}, {1, -1}, {-1, 0}, {1, 0}, {-1, 1}, {0, 1}, {1, 1}}, stateChangedCallback(stateChangedCallback),
-	coveredCellCount{width * height}, currentState{State::ePlaying}
+Map::Map(size_t width, size_t height, Font const& font, std::vector<RefWrapper<Observer>> const& observers)
+	:notifier{NotifierType::eMap, observers}, width{width}, height{ height }, position{ -1.0f, -14.0f / 16.0f, -0.1f },
+	scale{ 2.0f, 1.0f + 14.0f / 16.0f }, font{ font }, cells(width* height),
+	adjacencyOffsets{{-1, -1}, {0, -1}, {1, -1}, {-1, 0}, {1, 0}, {-1, 1}, {0, 1}, {1, 1}},
+	coveredCellCount{width * height}, currentState{State::ePreparing}
 {
 	populateMines();
 }
@@ -66,9 +67,7 @@ void Map::reset()
 
 	populateMines();
 
-	inputBlocked = false;
-	currentState = State::ePlaying;
-	stateChangedCallback(State::ePlaying);
+	changeState(State::ePreparing);
 }
 
 void Map::populateMines()
@@ -103,9 +102,7 @@ void Map::pressCell(size_t xIndex, size_t yIndex)
 	if (pressedCell.mined)
 	{
 		mineCount = 'X';
-		inputBlocked = true;
-		currentState = State::eLost;
-		stateChangedCallback(State::eLost);
+		changeState(State::eLost);
 	}
 	else if (mineCount == '0')
 	{
@@ -116,12 +113,8 @@ void Map::pressCell(size_t xIndex, size_t yIndex)
 	if (mineCount != 'X')
 	{
 		coveredCellCount--;
-		if (coveredCellCount == 0)
-		{
-			inputBlocked = true;
-			currentState = State::eWon;
-			stateChangedCallback(State::eWon);
-		}
+		if (coveredCellCount == 0) changeState(State::eWon);
+		else if (currentState == State::ePreparing) changeState(State::ePlaying);
 	}
 
 	changeCellQuad(xIndex, yIndex, mineCount);
@@ -242,6 +235,13 @@ void Map::changeCellQuad(size_t xIndex, size_t yIndex, uint8_t newQuad)
 bool Map::isIndexValid(int64_t xIndex, int64_t yIndex)
 {
 	return xIndex >= 0 && xIndex < (int64_t)width && yIndex >= 0 && yIndex < (int64_t)height;
+}
+
+void Map::changeState(State newState)
+{
+	inputBlocked = newState == State::eLost || newState == State::eWon;
+	currentState = newState;
+	notifier.notify((size_t)newState);
 }
 
 

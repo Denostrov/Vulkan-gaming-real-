@@ -4,6 +4,7 @@
 
 #include "constants.h"
 #include "Text.h"
+#include "Observer.h"
 
 class Game;
 
@@ -20,19 +21,21 @@ class Map
 	};
 
 public:
-	enum class State
+	enum class State : size_t
 	{
-		ePlaying, eLost, eWon
+		ePlaying, eLost, eWon, ePreparing
 	};
 
 public:
-	Map(size_t width, size_t height, Font const& font, MemberFunction<void, Game, State> stateChangedCallback);
+	Map(size_t width, size_t height, Font const& font, std::vector<RefWrapper<Observer>> const& observers);
 	~Map();
 
 	void onMousePressed(double xPos, double yPos, bool leftButton);
 	void onMouseReleased();
 
 	void reset();
+
+	Notifier notifier;
 
 	size_t coveredCellCount;
 	size_t markedCellCount{};
@@ -78,7 +81,7 @@ private:
 
 	bool isIndexValid(int64_t xIndex, int64_t yIndex);
 
-	MemberFunction<void, Game, State> stateChangedCallback;
+	void changeState(State newState);
 
 	bool inputBlocked = false;
 	std::pair<size_t, size_t> checkedCellIndices;

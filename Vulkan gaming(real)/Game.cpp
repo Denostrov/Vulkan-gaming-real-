@@ -4,7 +4,7 @@
 
 Game::Game()
 	:eventHandler(), debugFont{"textures/DejaVu mono.json"}, debugTextBox({0.0f, -1.0f, 0.0f}, {1.0f, 0.5f}, debugFont), gameOverFlash(debugFont),
-	mineMap{ 30, 15, debugFont, {*this, &Game::onMapStateChanged} }, resetButton({ -2.0f / 16.0f, -1.0f, -0.1f }, { 4.0f / 16.0f, 2.0f / 16.0f }, debugFont, "lmao"s,
+	mineMap{ 30, 15, debugFont, {observer} }, resetButton({ -2.0f / 16.0f, -1.0f, -0.1f }, { 4.0f / 16.0f, 2.0f / 16.0f }, debugFont, "lmao"s,
 		MemberFunction(mineMap, &Map::reset)), remainingMines("Mines: "s + std::to_string(50), debugFont, {-1.0f, -0.925f, -0.1f}),
 	gameTimerText("0", debugFont, {0.75f, -0.925f, -0.1f})
 {
@@ -143,11 +143,11 @@ void Game::onMapStateChanged(Map::State newState)
 {
 	switch (newState)
 	{
-	case Map::State::ePlaying:
+	case Map::State::ePreparing:
 		resetButton.changeText("lmao"s);
 		gameTimer = 0;
 		gameTimerText.setText("0");
-		remainingMines.setText("50");
+		remainingMines.setText("Mines: 50");
 		break;
 	case Map::State::eLost:
 		resetButton.changeText("retard"s);
@@ -156,6 +156,9 @@ void Game::onMapStateChanged(Map::State newState)
 	case Map::State::eWon:
 		resetButton.changeText("based"s);
 		gameOverFlash.start({ 0.0f, 1.0f, 0.0f }, 0.1);
+		break;
+	case Map::State::ePlaying:
+		resetButton.changeText("yooo"s);
 		break;
 	default:
 		break;
@@ -167,6 +170,13 @@ void Game::update()
 	processInput();
 	debugTextBox.update();
 	gameOverFlash.update();
+	for (auto&& notification : observer.getNotifications())
+	{
+		if (notification.first == NotifierType::eMap)
+		{
+			onMapStateChanged((Map::State)notification.second);
+		}
+	}
 	if (mineMap.currentState == Map::State::ePlaying && mineMap.coveredCellCount != 30 * 15 - 50)
 	{
 		gameTimer += TIME_STEP;

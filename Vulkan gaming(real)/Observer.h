@@ -13,7 +13,7 @@ class Observer;
 class Notifier
 {
 public:
-	Notifier(std::vector<RefWrapper<Observer>> const& observers);
+	Notifier(NotifierType type, std::vector<RefWrapper<Observer>> const& observers);
 	~Notifier();
 
 	void addObserver(Observer& observer);
@@ -32,7 +32,7 @@ public:
 	Observer();
 	~Observer();
 
-	auto getNotifications();
+	std::vector<std::pair<NotifierType, size_t>> getNotifications();
 
 	friend class Notifier;
 

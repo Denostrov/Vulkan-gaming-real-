@@ -1,7 +1,7 @@
 #include "Observer.h"
 
-Notifier::Notifier(std::vector<RefWrapper<Observer>> const& observers)
-	:observers(observers)
+Notifier::Notifier(NotifierType type, std::vector<RefWrapper<Observer>> const& observers)
+	:type(type), observers(observers)
 {
 	for (auto&& observer : observers)
 	{
@@ -47,7 +47,7 @@ Observer::~Observer()
 	}
 }
 
-auto Observer::getNotifications()
+std::vector<std::pair<NotifierType, size_t>> Observer::getNotifications()
 {
 	auto result = notifications;
 	notifications.clear();

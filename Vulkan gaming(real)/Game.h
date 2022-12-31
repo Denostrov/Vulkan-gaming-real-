@@ -8,6 +8,7 @@
 #include "Map.h"
 #include "Button.h"
 #include "GraphicalEffects.h"
+#include "Observer.h"
 
 class EventHandler;
 
@@ -44,10 +45,10 @@ private:
 	std::unique_ptr<VulkanResources> vulkan;
 
 	EventHandler eventHandler;
-	friend class EventHandler;
 
 	ColorFlash gameOverFlash;
 
+	Observer observer;
 	Map mineMap;
 	Button<MemberFunction<void, Map>> resetButton;
 
