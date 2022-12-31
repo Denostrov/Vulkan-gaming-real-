@@ -167,7 +167,7 @@ void Game::update()
 	processInput();
 	debugTextBox.update();
 	gameOverFlash.update();
-	if (mineMap.currentState == Map::State::ePlaying && mineMap.coveredCellCount != 30 * 15)
+	if (mineMap.currentState == Map::State::ePlaying && mineMap.coveredCellCount != 30 * 15 - 50)
 	{
 		gameTimer += TIME_STEP;
 		gameTimerText.setText(std::to_string(std::roundf(gameTimer * 100.0f) / 100.0f));

@@ -79,3 +79,39 @@ struct MemberFunction
 	Member& member;
 	Return(Member::* func)(Args...);
 };
+
+template<class Reference>
+struct RefWrapper
+{
+	template<class U, std::enable_if_t<!std::is_same_v<RefWrapper, std::decay_t<U>>, bool> = true>
+	constexpr RefWrapper(U&& ref)
+		:ref{std::forward<U>(ref)}
+	{}
+
+	constexpr RefWrapper(RefWrapper<Reference> const& other) noexcept
+		:ref{other.ref}
+	{}
+
+	constexpr Reference& get() const noexcept { return ref.get(); }
+
+	std::reference_wrapper<Reference> ref;
+};
+
+template<class Reference>
+inline bool operator==(RefWrapper<Reference> const& lhs, RefWrapper<Reference> const& rhs)
+{
+	return std::addressof(lhs.ref.get()) == std::addressof(rhs.ref.get());
+}
+
+template<class Reference>
+constexpr RefWrapper<Reference> refWrap(Reference& ref) noexcept
+{
+	return RefWrapper<Reference>(ref);
+}
+template<class Reference>
+constexpr RefWrapper<Reference> refWrap(RefWrapper<Reference> ref) noexcept
+{
+	return ref;
+}
+template<class Reference>
+void refWrap(Reference const&&) = delete;
