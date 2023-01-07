@@ -4,8 +4,8 @@
 
 Game::Game()
 	:eventHandler(), debugFont{"textures/DejaVu mono.json"}, debugTextBox({0.0f, -1.0f, 0.0f}, {1.0f, 0.5f}, debugFont), gameOverFlash(debugFont),
-	mineMap{ 30, 15, debugFont, {observer} }, resetButton({ -2.0f / 16.0f, -1.0f, -0.1f }, { 4.0f / 16.0f, 2.0f / 16.0f }, debugFont, "lmao"s,
-		MemberFunction(mineMap, &Map::reset)), remainingMines("Mines: "s + std::to_string(50), debugFont, {-1.0f, -0.925f, -0.1f}),
+	mineMap{ 30, 15, 50, debugFont, {observer} }, resetButton({ -2.0f / 16.0f, -1.0f, -0.1f }, { 4.0f / 16.0f, 2.0f / 16.0f }, debugFont, "lmao"s,
+		MemberFunction(mineMap, &Map::reset)), remainingMines("Mines: "s + std::to_string(mineMap.getMineCount()), debugFont, {-1.0f, -0.925f, -0.1f}),
 	gameTimerText("0", debugFont, {0.75f, -0.925f, -0.1f})
 {
 	vulkan = std::make_unique<VulkanResources>(&eventHandler);
@@ -80,7 +80,7 @@ void Game::onMouseButtonPressed(int button)
 		auto [xPos, yPos] = vulkan->getCursorCoordinates();
 		mineMap.onMousePressed(xPos, yPos, button == GLFW_MOUSE_BUTTON_LEFT);
 		if (button == GLFW_MOUSE_BUTTON_LEFT) resetButton.onMousePressed(xPos, yPos);
-		remainingMines.setText("Mines: " + std::to_string(50 - mineMap.markedCellCount));
+		remainingMines.setText("Mines: " + std::to_string(mineMap.getMineCount() - mineMap.getMarkedCellCount()));
 		break;
 	}
 	default:
@@ -88,7 +88,7 @@ void Game::onMouseButtonPressed(int button)
 	}
 }
 
-void Game::onMouseButtonHeld(int button)
+void Game::onMouseButtonHeld(int)
 {
 
 }
@@ -134,7 +134,7 @@ void Game::onKeyPressed(int key)
 	}
 }
 
-void Game::onKeyHeld(int key)
+void Game::onKeyHeld(int)
 {
 
 }
@@ -147,7 +147,7 @@ void Game::onMapStateChanged(Map::State newState)
 		resetButton.changeText("lmao"s);
 		gameTimer = 0;
 		gameTimerText.setText("0");
-		remainingMines.setText("Mines: 50");
+		remainingMines.setText("Mines: "s + std::to_string(mineMap.getMineCount()));
 		break;
 	case Map::State::eLost:
 		resetButton.changeText("retard"s);
@@ -177,10 +177,10 @@ void Game::update()
 			onMapStateChanged((Map::State)notification.second);
 		}
 	}
-	if (mineMap.currentState == Map::State::ePlaying && mineMap.coveredCellCount != 30 * 15 - 50)
+	if (mineMap.getCurrentState() == Map::State::ePlaying && mineMap.getCoveredCellCount() != mineMap.getCellCount() - mineMap.getMineCount())
 	{
 		gameTimer += TIME_STEP;
-		gameTimerText.setText(std::to_string(std::roundf(gameTimer * 100.0f) / 100.0f));
+		gameTimerText.setText(std::to_string(std::roundf((float)gameTimer * 100.0f) / 100.0f));
 	}
 }
 

@@ -48,6 +48,12 @@ inline uint32_t xorshift32c(uint32_t state)
 	return state;
 }
 
+inline uint32_t randInt()
+{
+	static uint32_t result{47};
+	return xorshift32(result);
+}
+
 template<class First, class Second>
 struct Pair
 {

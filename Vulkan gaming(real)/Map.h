@@ -27,7 +27,7 @@ public:
 	};
 
 public:
-	Map(size_t width, size_t height, Font const& font, std::vector<RefWrapper<Observer>> const& observers);
+	Map(size_t width, size_t height, size_t mineCount, Font const& font, std::vector<RefWrapper<Observer>> const& observers);
 	~Map();
 
 	void onMousePressed(double xPos, double yPos, bool leftButton);
@@ -37,12 +37,14 @@ public:
 
 	Notifier notifier;
 
-	size_t coveredCellCount;
-	size_t markedCellCount{};
-	State currentState;
+	State getCurrentState() const { return currentState; }
+	size_t getMineCount() const { return mineCount; }
+	size_t getMarkedCellCount() const { return markedCellCount; }
+	size_t getCoveredCellCount() const { return coveredCellCount; }
+	size_t getCellCount() const { return width * height; }
 
 private:
-	void populateMines();
+	void populateMines(size_t newMineCount);
 
 	void pressCell(size_t xIndex, size_t yIndex);
 	void markCell(size_t xIndex, size_t yIndex);
@@ -88,6 +90,7 @@ private:
 
 	size_t width;
 	size_t height;
+	size_t mineCount{};
 	glm::vec3 position;
 	glm::vec2 scale;
 	Font font;
@@ -96,4 +99,8 @@ private:
 
 	std::vector<size_t> cellQuads;
 	std::vector<Cell> cells;
+
+	size_t coveredCellCount;
+	size_t markedCellCount{};
+	State currentState;
 };

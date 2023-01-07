@@ -3,13 +3,13 @@
 
 #include <random>
 
-Map::Map(size_t width, size_t height, Font const& font, std::vector<RefWrapper<Observer>> const& observers)
-	:notifier{NotifierType::eMap, observers}, width{width}, height{ height }, position{ -1.0f, -14.0f / 16.0f, -0.1f },
-	scale{ 2.0f, 1.0f + 14.0f / 16.0f }, font{ font }, cells(width* height),
-	adjacencyOffsets{{-1, -1}, {0, -1}, {1, -1}, {-1, 0}, {1, 0}, {-1, 1}, {0, 1}, {1, 1}},
-	coveredCellCount{width * height}, currentState{State::ePreparing}
+Map::Map(size_t width, size_t height, size_t mineCount, Font const& font, std::vector<RefWrapper<Observer>> const& observers)
+	:notifier{ NotifierType::eMap, observers }, width{ width }, height{ height },
+	position{ -1.0f, -14.0f / 16.0f, -0.1f }, scale{ 2.0f, 1.0f + 14.0f / 16.0f }, font{ font }, cells(width* height),
+	adjacencyOffsets{ {-1, -1}, {0, -1}, {1, -1}, {-1, 0}, {1, 0}, {-1, 1}, {0, 1}, {1, 1} },
+	coveredCellCount{ width * height }, currentState{ State::ePreparing }
 {
-	populateMines();
+	populateMines(mineCount);
 }
 
 Map::~Map()
@@ -26,23 +26,22 @@ void Map::onMousePressed(double xPos, double yPos, bool leftButton)
 
 	int64_t xIndex = static_cast<int64_t>(std::floor((xPos - position.x) / scale.x * width));
 	int64_t yIndex = static_cast<int64_t>(std::floor((yPos - position.y) / scale.y * height));
-	if (isIndexValid(xIndex, yIndex))
+	if (!isIndexValid(xIndex, yIndex)) return;
+
+	auto& clickedCell = getCellAtIndex(xIndex, yIndex);
+	if (clickedCell.state == CellState::eCovered)
 	{
-		auto& clickedCell = getCellAtIndex(xIndex, yIndex);
-		if (clickedCell.state == CellState::eCovered)
-		{
-			if (leftButton) pressCell(xIndex, yIndex);
-			else markCell(xIndex, yIndex);
-		}
-		else if (clickedCell.state == CellState::eMarked)
-		{
-			if (!leftButton) unmarkCell(xIndex, yIndex);
-		}
-		else
-		{
-			checkCell(xIndex, yIndex);
-			inputBlocked = true;
-		}
+		if (leftButton) pressCell(xIndex, yIndex);
+		else markCell(xIndex, yIndex);
+	}
+	else if (clickedCell.state == CellState::eMarked)
+	{
+		if (!leftButton) unmarkCell(xIndex, yIndex);
+	}
+	else
+	{
+		checkCell(xIndex, yIndex);
+		inputBlocked = true;
 	}
 }
 
@@ -65,12 +64,12 @@ void Map::reset()
 	coveredCellCount = width * height;
 	markedCellCount = 0;
 
-	populateMines();
+	populateMines((randInt() % (width * height / 4)) + 1);
 
 	changeState(State::ePreparing);
 }
 
-void Map::populateMines()
+void Map::populateMines(size_t newMineCount)
 {
 	cellQuads.resize(width * height);
 	for (size_t i = 0; i < height; i++)
@@ -82,10 +81,13 @@ void Map::populateMines()
 			ObjectPools::quads.add(QuadComponent(quadPosition, quadScale, font.getCharOffset('#'), font.getCharTextureScale()), &cellQuads[i * width + j]);
 		}
 	}
-	for (size_t i = 0; i < 50; i++)
+
+	newMineCount = std::min(newMineCount, cells.size() - 1);
+	mineCount = newMineCount;
+	coveredCellCount -= newMineCount;
+	for (size_t i = 0; i < newMineCount; i++)
 	{
 		cells[i].mined = true;
-		coveredCellCount--;
 	}
 	std::random_device rd;
 	std::minstd_rand gen(rd());
@@ -94,30 +96,30 @@ void Map::populateMines()
 
 void Map::pressCell(size_t xIndex, size_t yIndex)
 {
-	uint8_t mineCount = countAdjacentMines(xIndex, yIndex);
+	uint8_t adjacentMinesCount = countAdjacentMines(xIndex, yIndex);
 
 	auto& pressedCell = getCellAtIndex(xIndex, yIndex);
 	pressedCell.state = CellState::eUncovered;
 
 	if (pressedCell.mined)
 	{
-		mineCount = 'X';
+		adjacentMinesCount = 'X';
 		changeState(State::eLost);
 	}
-	else if (mineCount == '0')
+	else if (adjacentMinesCount == '0')
 	{
-		mineCount = ' ';
+		adjacentMinesCount = ' ';
 		pressAdjacentCells(xIndex, yIndex);
 	}
 
-	if (mineCount != 'X')
+	if (adjacentMinesCount != 'X')
 	{
 		coveredCellCount--;
 		if (coveredCellCount == 0) changeState(State::eWon);
 		else if (currentState == State::ePreparing) changeState(State::ePlaying);
 	}
 
-	changeCellQuad(xIndex, yIndex, mineCount);
+	changeCellQuad(xIndex, yIndex, adjacentMinesCount);
 }
 
 void Map::markCell(size_t xIndex, size_t yIndex)
@@ -234,7 +236,7 @@ void Map::changeCellQuad(size_t xIndex, size_t yIndex, uint8_t newQuad)
 
 bool Map::isIndexValid(int64_t xIndex, int64_t yIndex)
 {
-	return xIndex >= 0 && xIndex < (int64_t)width && yIndex >= 0 && yIndex < (int64_t)height;
+	return xIndex >= 0 && xIndex < (int64_t)width&& yIndex >= 0 && yIndex < (int64_t)height;
 }
 
 void Map::changeState(State newState)

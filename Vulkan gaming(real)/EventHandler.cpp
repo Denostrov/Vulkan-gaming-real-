@@ -48,7 +48,7 @@ bool EventHandler::getFramebufferResized()
 	return result;
 }
 
-void EventHandler::onMouseButtonEvent(int button, int action, int mods)
+void EventHandler::onMouseButtonEvent(int button, int action, int)
 {
 	if (action == GLFW_PRESS)
 	{
@@ -62,7 +62,7 @@ void EventHandler::onMouseButtonEvent(int button, int action, int mods)
 	}
 }
 
-void EventHandler::onKeyEvent(int key, int scancode, int action, int mods)
+void EventHandler::onKeyEvent(int key, int, int action, int)
 {
 	if (action == GLFW_PRESS)
 	{
@@ -80,7 +80,7 @@ void EventHandler::onFramebufferResizeEvent()
 	framebufferResized = true;
 }
 
-void framebufferResizeCallback(GLFWwindow* window, int width, int height)
+void framebufferResizeCallback(GLFWwindow* window, int, int)
 {
 	auto eventHandler = reinterpret_cast<EventHandler*>(glfwGetWindowUserPointer(window));
 	eventHandler->onFramebufferResizeEvent();

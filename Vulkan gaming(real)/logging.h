@@ -43,7 +43,7 @@ inline auto errorFatal(bool val, std::string const& message = {})
 }
 
 inline VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-	VkDebugUtilsMessageTypeFlagsEXT messageType, VkDebugUtilsMessengerCallbackDataEXT const* callbackData, void* userData)
+	VkDebugUtilsMessageTypeFlagsEXT messageType, VkDebugUtilsMessengerCallbackDataEXT const* callbackData, void*)
 {
 	using namespace std::literals;
 
