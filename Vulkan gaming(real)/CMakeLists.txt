@@ -1,0 +1,34 @@
+target_sources(VulkanGame
+	PRIVATE
+	main.cpp
+	Button.h
+	constants.h
+	EventHandler.h
+	EventHandler.cpp
+	Font.h
+	Font.cpp
+	Game.h
+	Game.cpp
+	GraphicalEffects.h
+	GraphicalEffects.cpp
+	helpers.h
+	logging.h
+	Map.h
+	Map.cpp
+	ObjectPool.h
+	Observer.h
+	Observer.cpp
+	print.h
+	QuadComponent.h
+	QuadComponent.cpp
+	Text.h
+	Text.cpp
+	VulkanResources.h
+	VulkanResources.cpp
+	Window.h
+	Window.cpp
+)
+
+target_include_directories(VulkanGame
+	PRIVATE
+	${CMAKE_CURRENT_SOURCE_DIR})
